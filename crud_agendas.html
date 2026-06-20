@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Agendas - Fight & Fitness</title>
+    <style>
+        :root {
+            --rojo-gym: #d32f2f;
+            --negro-fondo: #1a1a1a;
+            --blanco: #ffffff;
+            --gris: #f4f4f4;
+        }
+        * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+        body { background-color: var(--gris); margin: 0; padding: 20px; color: #333; }
+        
+        .contenedor { max-width: 800px; margin: 0 auto; background: var(--blanco); padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1, h2 { color: var(--negro-fondo); }
+        
+        .oculto { display: none !important; }
+        
+        /* Formularios */
+        .campo { margin-bottom: 15px; }
+        .campo label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .campo input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        button { background-color: var(--negro-fondo); color: var(--blanco); border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        button:hover { background-color: #333; }
+        .btn-rojo { background-color: var(--rojo-gym); }
+        .btn-rojo:hover { background-color: #b71c1c; }
+        .btn-chico { padding: 5px 10px; font-size: 0.9em; margin-right: 5px; }
+        
+        /* Tablas */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: var(--negro-fondo); color: white; }
+        
+        .estado-pendiente { color: orange; font-weight: bold; }
+        .estado-aprobado { color: green; font-weight: bold; }
+        .estado-rechazado { color: red; font-weight: bold; }
+        
+        .header-panel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--rojo-gym); padding-bottom: 10px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="contenedor">
+    
+    <div id="vista-login">
+        <h1 style="color: var(--rojo-gym); text-align: center;">Fight & Fitness - Portal</h1>
+        <h2>Iniciar Sesión</h2>
+        <div class="campo">
+            <label>Usuario:</label>
+            <input type="text" id="login-usuario" placeholder="Ej: usuario123">
+        </div>
+        <div class="campo">
+            <label>Contraseña:</label>
+            <input type="password" id="login-pass" placeholder="Ej: contraseña123">
+        </div>
+        <button onclick="iniciarSesion()">Entrar</button>
+        <hr style="margin: 20px 0;">
+        <h2>Crear Cuenta de Usuario</h2>
+        <div class="campo">
+            <label>Nuevo Usuario:</label>
+            <input type="text" id="reg-usuario">
+        </div>
+        <div class="campo">
+            <label>Nueva Contraseña:</label>
+            <input type="password" id="reg-pass">
+        </div>
+        <button onclick="registrarUsuario()" class="btn-rojo">Registrarse</button>
+    </div>
+
+    <div id="vista-usuario" class="oculto">
+        <div class="header-panel">
+            <h2>Panel de Usuario: <span id="nombre-usuario-display"></span></h2>
+            <button onclick="cerrarSesion()" class="btn-rojo">Cerrar Sesión</button>
+        </div>
+        
+        <h3>Solicitar / Modificar Horario</h3>
+        <p>Escribe tu horario ideal de entrenamiento (Ej: Lunes, Miércoles y Viernes 18:00 a 20:00).</p>
+        <div class="campo">
+            <input type="text" id="nuevo-horario" placeholder="Describe tu horario ideal...">
+        </div>
+        <button onclick="enviarSolicitudHorario()">Enviar Solicitud</button>
+
+        <h3 style="margin-top: 30px;">Tus Solicitudes</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Horario Solicitado</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-usuario">
+                </tbody>
+        </table>
+    </div>
+
+    <div id="vista-admin" class="oculto">
+        <div class="header-panel">
+            <h2>Panel de Administración</h2>
+            <button onclick="cerrarSesion()" class="btn-rojo">Cerrar Sesión</button>
+        </div>
+        
+        <h3>Gestión de Solicitudes de Agendas</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Horario Solicitado</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-admin">
+                </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    // --- 1. INICIALIZACIÓN DE DATOS (Simulando Base de Datos) ---
+    // Si no existen usuarios, creamos el ADMIN por defecto
+    if (!localStorage.getItem('usuarios')) {
+        const usuariosIniciales = [
+            { usuario: 'ADMIN', pass: 'ADMIN123', rol: 'admin' }
+        ];
+        localStorage.setItem('usuarios', JSON.stringify(usuariosIniciales));
+    }
+
+    // Si no existen agendas, creamos un array vacío
+    if (!localStorage.getItem('agendas')) {
+        localStorage.setItem('agendas', JSON.stringify([]));
+    }
+
+    // Usuario actual en sesión
+    let usuarioActual = null;
+
+    // --- 2. LÓGICA DE AUTENTICACIÓN ---
+    function registrarUsuario() {
+        const user = document.getElementById('reg-usuario').value.trim();
+        const pass = document.getElementById('reg-pass').value.trim();
+        
+        if (!user || !pass) return alert("Completa ambos campos para registrarte.");
+
+        let usuarios = JSON.parse(localStorage.getItem('usuarios'));
+        
+        // Verificar si existe
+        if (usuarios.some(u => u.usuario === user)) {
+            return alert("El usuario ya existe.");
+        }
+
+        usuarios.push({ usuario: user, pass: pass, rol: 'cliente' });
+        localStorage.setItem('usuarios', JSON.stringify(usuarios));
+        alert("Usuario registrado con éxito. Ahora puedes iniciar sesión.");
+        document.getElementById('reg-usuario').value = '';
+        document.getElementById('reg-pass').value = '';
+    }
+
+    function iniciarSesion() {
+        const user = document.getElementById('login-usuario').value.trim();
+        const pass = document.getElementById('login-pass').value.trim();
+        let usuarios = JSON.parse(localStorage.getItem('usuarios'));
+
+        const usuarioValido = usuarios.find(u => u.usuario === user && u.pass === pass);
+
+        if (usuarioValido) {
+            usuarioActual = usuarioValido;
+            document.getElementById('login-usuario').value = '';
+            document.getElementById('login-pass').value = '';
+            mostrarVistaCorrespondiente();
+        } else {
+            alert("Credenciales incorrectas.");
+        }
+    }
+
+    function cerrarSesion() {
+        usuarioActual = null;
+        document.getElementById('vista-login').classList.remove('oculto');
+        document.getElementById('vista-usuario').classList.add('oculto');
+        document.getElementById('vista-admin').classList.add('oculto');
+    }
+
+    function mostrarVistaCorrespondiente() {
+        document.getElementById('vista-login').classList.add('oculto');
+        
+        if (usuarioActual.rol === 'admin') {
+            document.getElementById('vista-admin').classList.remove('oculto');
+            cargarTablaAdmin();
+        } else {
+            document.getElementById('vista-usuario').classList.remove('oculto');
+            document.getElementById('nombre-usuario-display').innerText = usuarioActual.usuario;
+            cargarTablaUsuario();
+        }
+    }
+
+    // --- 3. LÓGICA DEL USUARIO (CLIENTE) ---
+    function enviarSolicitudHorario() {
+        const horario = document.getElementById('nuevo-horario').value.trim();
+        if (!horario) return alert("Escribe un horario válido.");
+
+        let agendas = JSON.parse(localStorage.getItem('agendas'));
+        
+        // Crear nueva solicitud (CREATE)
+        const nuevaSolicitud = {
+            id: Date.now(), // ID único simple
+            usuario: usuarioActual.usuario,
+            horario: horario,
+            estado: 'Pendiente'
+        };
+
+        agendas.push(nuevaSolicitud);
+        localStorage.setItem('agendas', JSON.stringify(agendas));
+        
+        document.getElementById('nuevo-horario').value = '';
+        cargarTablaUsuario();
+        alert("Solicitud enviada al administrador.");
+    }
+
+    function cargarTablaUsuario() {
+        const agendas = JSON.parse(localStorage.getItem('agendas'));
+        const tabla = document.getElementById('tabla-usuario');
+        tabla.innerHTML = '';
+
+        // Filtrar solo las agendas de este usuario (READ)
+        const misAgendas = agendas.filter(a => a.usuario === usuarioActual.usuario);
+
+        misAgendas.forEach(agenda => {
+            let fila = `<tr>
+                <td>${agenda.horario}</td>
+                <td class="estado-${agenda.estado.toLowerCase()}">${agenda.estado}</td>
+            </tr>`;
+            tabla.innerHTML += fila;
+        });
+    }
+
+    // --- 4. LÓGICA DEL ADMINISTRADOR ---
+    function cargarTablaAdmin() {
+        const agendas = JSON.parse(localStorage.getItem('agendas'));
+        const tabla = document.getElementById('tabla-admin');
+        tabla.innerHTML = '';
+
+        // Mostrar todas las agendas (READ)
+        agendas.forEach(agenda => {
+            let botones = '';
+            if (agenda.estado === 'Pendiente') {
+                botones = `
+                    <button class="btn-chico" style="background: green;" onclick="cambiarEstado(${agenda.id}, 'Aprobado')">Aceptar</button>
+                    <button class="btn-chico btn-rojo" onclick="cambiarEstado(${agenda.id}, 'Rechazado')">Rechazar</button>
+                `;
+            } else {
+                botones = `<span>Resuelto</span>`;
+            }
+
+            let fila = `<tr>
+                <td><strong>${agenda.usuario}</strong></td>
+                <td>${agenda.horario}</td>
+                <td class="estado-${agenda.estado.toLowerCase()}">${agenda.estado}</td>
+                <td>${botones}</td>
+            </tr>`;
+            tabla.innerHTML += fila;
+        });
+    }
+
+    function cambiarEstado(id, nuevoEstado) {
+        let agendas = JSON.parse(localStorage.getItem('agendas'));
+        
+        // Buscar y actualizar (UPDATE)
+        let indice = agendas.findIndex(a => a.id === id);
+        if (indice !== -1) {
+            agendas[indice].estado = nuevoEstado;
+            localStorage.setItem('agendas', JSON.stringify(agendas));
+            cargarTablaAdmin(); // Refrescar la vista
+        }
+    }
+</script>
+
+</body>
+</html>
