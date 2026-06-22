@@ -26,6 +26,7 @@ export function LayoutPrincipal({ children }: PropsLayoutPrincipal) {
           <NavLink to="/">Panel</NavLink>
           <NavLink to="/sedes">Sedes</NavLink>
           <NavLink to="/traslados">Traslados</NavLink>
+          <NavLink to="/membresias">Membresias</NavLink>
           <a href="/crud_agendas.html">Agendas HTML</a>
         </nav>
         <div className="sesion-resumen">

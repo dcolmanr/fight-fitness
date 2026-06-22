@@ -1,9 +1,10 @@
-import { Sede, SesionUsuario, SolicitudTraslado, Usuario } from '../tipos/modelos';
+import { Membresia, PlanMembresia, Sede, SesionUsuario, SolicitudTraslado, Usuario } from '../tipos/modelos';
 
 const CLAVE_SEDES = 'sedes';
 const CLAVE_USUARIOS = 'usuarios';
 const CLAVE_SESION = 'sesionFightFitness';
 const CLAVE_TRASLADOS = 'solicitudesTraslado';
+const CLAVE_MEMBRESIAS = 'membresias';
 
 const sedesIniciales: Sede[] = [
   {
@@ -42,6 +43,30 @@ const usuariosIniciales: Usuario[] = [
   },
 ];
 
+export const planesMembresia: PlanMembresia[] = [
+  {
+    tipo: 'Basico',
+    precioMensual: 25000,
+    disciplinasIncluidas: 1,
+    clasesSemanales: '2 clases por semana',
+    preparacionFisica: false,
+  },
+  {
+    tipo: 'Pro',
+    precioMensual: 35000,
+    disciplinasIncluidas: 2,
+    clasesSemanales: '3 clases por semana',
+    preparacionFisica: true,
+  },
+  {
+    tipo: 'Full',
+    precioMensual: 45000,
+    disciplinasIncluidas: 6,
+    clasesSemanales: 'Clases ilimitadas',
+    preparacionFisica: true,
+  },
+];
+
 function leerJson<T>(clave: string, respaldo: T): T {
   const valor = localStorage.getItem(clave);
   if (!valor) return respaldo;
@@ -69,6 +94,10 @@ export function prepararDatosIniciales(): void {
   if (!localStorage.getItem(CLAVE_TRASLADOS)) {
     escribirJson(CLAVE_TRASLADOS, []);
   }
+
+  if (!localStorage.getItem(CLAVE_MEMBRESIAS)) {
+    escribirJson(CLAVE_MEMBRESIAS, []);
+  }
 }
 
 export function obtenerSedes(): Sede[] {
@@ -95,6 +124,14 @@ export function guardarTraslados(traslados: SolicitudTraslado[]): void {
   escribirJson(CLAVE_TRASLADOS, traslados);
 }
 
+export function obtenerMembresias(): Membresia[] {
+  return leerJson<Membresia[]>(CLAVE_MEMBRESIAS, []);
+}
+
+export function guardarMembresias(membresias: Membresia[]): void {
+  escribirJson(CLAVE_MEMBRESIAS, membresias);
+}
+
 export function obtenerSesionGuardada(): SesionUsuario | null {
   return leerJson<SesionUsuario | null>(CLAVE_SESION, null);
 }
@@ -111,4 +148,9 @@ export function buscarNombreSede(sedeId: number | null): string {
   if (sedeId === null) return 'Sin sede asignada';
   const sede = obtenerSedes().find((item) => item.id === sedeId);
   return sede ? sede.nombre : 'Sede no encontrada';
+}
+
+export function buscarNombreUsuario(usuario: string): string {
+  const encontrado = obtenerUsuarios().find((item) => item.usuario === usuario);
+  return encontrado?.nombreCompleto || usuario;
 }

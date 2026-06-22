@@ -258,6 +258,37 @@ button:hover {
   font-size: 2.1rem;
 }
 
+.grid-planes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.plan-card {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-top: 4px solid var(--rojo-gym);
+  border-radius: 8px;
+  padding: 18px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+}
+
+.plan-card h2 {
+  margin: 0 0 10px;
+}
+
+.plan-card strong {
+  display: block;
+  color: var(--rojo-gym);
+  font-size: 1.6rem;
+}
+
+.plan-card p,
+.plan-card span {
+  margin: 8px 0 0;
+  color: #555555;
+}
+
 .accion-grande {
   display: grid;
   gap: 8px;
@@ -318,7 +349,9 @@ td span {
 }
 
 .estado.inactiva,
-.estado.rechazado {
+.estado.rechazado,
+.estado.suspendida,
+.estado.vencida {
   background: var(--rojo-gym);
 }
 

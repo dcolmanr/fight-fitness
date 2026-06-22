@@ -1,6 +1,8 @@
 export type RolUsuario = 'admin' | 'cliente';
 export type EstadoSede = 'Activa' | 'Inactiva';
 export type EstadoSolicitud = 'Pendiente' | 'Aprobado' | 'Rechazado';
+export type TipoPlanMembresia = 'Basico' | 'Pro' | 'Full';
+export type EstadoMembresia = 'Activa' | 'Pendiente' | 'Suspendida' | 'Vencida';
 
 export interface Sede {
   id: number;
@@ -34,6 +36,26 @@ export interface SolicitudTraslado {
   motivo: string;
   estado: EstadoSolicitud;
   fecha: string;
+}
+
+export interface PlanMembresia {
+  tipo: TipoPlanMembresia;
+  precioMensual: number;
+  disciplinasIncluidas: number;
+  clasesSemanales: string;
+  preparacionFisica: boolean;
+}
+
+export interface Membresia {
+  id: number;
+  usuario: string;
+  plan: TipoPlanMembresia;
+  precioMensual: number;
+  fechaInicio: string;
+  fechaTermino: string;
+  estado: EstadoMembresia;
+  metodoPago: string;
+  observacion: string;
 }
 
 export interface ErroresLogin {

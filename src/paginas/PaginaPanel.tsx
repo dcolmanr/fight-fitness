@@ -1,13 +1,21 @@
 import { Link } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
-import { buscarNombreSede, obtenerSedes, obtenerTraslados, obtenerUsuarios } from '../datos/almacenamiento';
+import {
+  buscarNombreSede,
+  obtenerMembresias,
+  obtenerSedes,
+  obtenerTraslados,
+  obtenerUsuarios,
+} from '../datos/almacenamiento';
 
 export function PaginaPanel() {
   const { sesion, esAdmin } = usarAutenticacion();
   const sedes = obtenerSedes();
   const usuarios = obtenerUsuarios();
   const traslados = obtenerTraslados();
+  const membresias = obtenerMembresias();
   const pendientes = traslados.filter((solicitud) => solicitud.estado === 'Pendiente').length;
+  const activas = membresias.filter((membresia) => membresia.estado === 'Activa').length;
 
   return (
     <section className="pagina">
@@ -32,6 +40,10 @@ export function PaginaPanel() {
           <strong>{pendientes}</strong>
           <span>Traslados pendientes</span>
         </article>
+        <article>
+          <strong>{activas}</strong>
+          <span>Membresias activas</span>
+        </article>
       </div>
 
       <div className="panel">
@@ -49,6 +61,10 @@ export function PaginaPanel() {
         <Link className="accion-grande" to="/traslados">
           Solicitudes de traslado
           <span>Clientes solicitan cambio y admin lo aprueba o rechaza.</span>
+        </Link>
+        <Link className="accion-grande" to="/membresias">
+          Gestionar membresias
+          <span>Activa cuentas, modifica planes y revisa nivel de acceso.</span>
         </Link>
       </div>
     </section>
