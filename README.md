@@ -1,54 +1,208 @@
-# Fight & Fitness Center - Evaluacion 3
+# Fight Fitness - Sistema de Gestión de Gimnasio
 
-Intranet basada en el proyecto de las evaluaciones 1 y 2 de Fight & Fitness Center.
+## Descripción del Proyecto
 
-## Modulos
+Fight Fitness es una aplicación web desarrollada con React y TypeScript que permite administrar clientes, sedes, membresías y agendas de entrenamiento dentro de un gimnasio.
 
-- `crud_agendas.html`: CRUD de agendas realizado como primer avance por el compañero. Se mantiene intacto como modulo legado.
-- React + TypeScript: modulo 2 de Autenticacion y Gestion de Sedes.
-- React + TypeScript: modulo 3 de Gestion de Membresias.
+El sistema implementa autenticación de usuarios, control de acceso mediante rutas protegidas y operaciones CRUD para la gestión de la información.
 
-## Modulo 2: Autenticacion y Gestion de Sedes
+### Módulos Principales
 
-Funcionalidades implementadas:
+#### 1. Gestión de Agendas
 
-- Registro de cliente con seleccion de sede inicial.
-- Inicio y cierre de sesion.
-- Sesion persistida en `localStorage`.
-- Contexto global de autenticacion con `useContext`.
-- Rutas protegidas con React Router.
-- CRUD de sedes para administrador.
-- Busqueda de sedes.
-- Ruta dinamica `/sedes/:id` usando `useParams`.
-- Solicitud de traslado de sede por parte del cliente.
-- Aprobacion o rechazo de traslado por parte del administrador.
-- Coordinacion con el modulo de agendas mediante `localStorage` y enlace a `crud_agendas.html`.
+Permite administrar los horarios de entrenamiento de los usuarios.
 
-## Modulo 3: Gestion de Membresias
+**Usuario**
 
-Funcionalidades implementadas:
+* Crear una agenda de entrenamiento.
+* Solicitar modificaciones de horario.
+* Consultar su agenda asignada.
 
-- CRUD de membresias para administrador.
-- Asignacion de plan a cliente registrado.
-- Planes basados en EVA1: Basico, Pro y Full.
-- Estados de membresia: Activa, Pendiente, Suspendida y Vencida.
-- Vista de cliente para revisar su suscripcion y nivel de acceso.
-- Busqueda de membresias por cliente, plan, estado o pago.
-- Ruta dinamica `/membresias/:id` para detalle de un registro.
-- Persistencia en `localStorage` con la clave `membresias`.
+**Administrador**
 
-## Datos de prueba
+* Aprobar solicitudes.
+* Rechazar solicitudes.
+* Modificar agendas directamente.
 
-Administrador:
+---
 
-- Usuario: `ADMIN`
-- Contrasena: `ADMIN123`
+#### 2. Gestión de Sedes y Autenticación
 
-## Ejecucion local
+Permite administrar el acceso al sistema y las sucursales disponibles.
 
-```bash
+**Usuario**
+
+* Registrarse.
+* Iniciar sesión.
+* Seleccionar una sede.
+
+**Administrador**
+
+* Crear sedes.
+* Editar sedes.
+* Eliminar sedes.
+* Gestionar solicitudes de traslado entre sucursales.
+
+---
+
+#### 3. Gestión de Membresías
+
+Permite controlar el estado de las suscripciones de los clientes.
+
+**Administrador**
+
+* Crear membresías.
+* Editar membresías.
+* Eliminar membresías.
+* Activar o modificar suscripciones.
+
+### Flujo General del Sistema
+
+1. El usuario se registra y selecciona una sede.
+2. Se le asigna una membresía activa.
+3. Con la membresía habilitada puede gestionar su agenda.
+4. El administrador supervisa y administra toda la información.
+
+---
+
+## Tecnologías Utilizadas
+
+* React 18
+* TypeScript
+* React Router DOM
+* Vite
+* CSS
+
+---
+
+## Estructura General
+
+src/
+
+├── paginas/
+
+├── componentes/
+
+├── contextos/
+
+├── rutas/
+
+├── datos/
+
+├── interfaces/
+
+└── App.tsx
+
+---
+
+
+### Paso 1: Abrir el proyecto
+
+Abrir la carpeta del proyecto en Visual Studio Code.
+
+Ubicar el archivo:
+
+package.json
+
+Hacer clic derecho sobre él y seleccionar:
+
+"Open in Integrated Terminal"
+
+---
+
+### Paso 2: Instalar dependencias
+
+Si es la primera vez que se ejecuta el proyecto:
+
 npm install
-npm run dev
-```
 
-Luego abrir la URL que muestra Vite en la terminal.
+---
+
+### Paso 3: Iniciar el servidor
+
+Ejecutar:
+
+npm run dev
+
+El sistema mostrará una salida similar a:
+
+VITE vX.X.X
+
+Local: http://localhost:5173/
+
+Abrir el enlace desde el navegador.
+
+---
+
+### Solución de Problemas
+
+Si aparecen errores relacionados con permisos de PowerShell:
+
+Abrir PowerShell como Administrador y ejecutar:
+
+Set-ExecutionPolicy RemoteSigned
+
+Confirmar con "Y" o "Sí".
+
+Luego volver a ejecutar:
+
+npm install
+
+npm run dev
+
+---
+
+
+## Funcionalidades Implementadas
+
+* Inicio de sesión.
+* Cierre de sesión.
+* Rutas protegidas.
+* Gestión de sedes.
+* Gestión de membresías.
+* Gestión de agendas.
+* Solicitudes de traslado.
+* Persistencia de datos local.
+* Validaciones básicas de formularios.
+
+---
+
+## Conceptos React Utilizados
+
+### useState
+
+Permite almacenar y actualizar estados dentro de los componentes.
+
+### useEffect
+
+Permite ejecutar lógica al cargar componentes o cuando cambian determinadas dependencias.
+
+### useContext
+
+Permite compartir información global, como la sesión del usuario autenticado.
+
+### React Router
+
+Permite navegar entre páginas sin recargar la aplicación.
+
+### TypeScript
+
+Permite definir interfaces y validar estructuras de datos para reducir errores durante el desarrollo.
+
+---
+
+## Cierre del Servidor
+
+Para detener la aplicación:
+
+Ctrl + C
+
+Si aparece:
+
+¿Desea terminar el trabajo por lotes? (S/N)
+
+Responder:
+
+S
+
+y presionar Enter.
