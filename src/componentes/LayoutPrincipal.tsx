@@ -10,8 +10,8 @@ export function LayoutPrincipal({ children }: PropsLayoutPrincipal) {
   const { sesion, cerrarSesion, esAdmin } = usarAutenticacion();
   const navigate = useNavigate();
 
-  function salir(): void {
-    cerrarSesion();
+  async function salir(): Promise<void> {
+    await cerrarSesion();
     navigate('/login');
   }
 

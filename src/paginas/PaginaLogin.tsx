@@ -27,27 +27,27 @@ export function PaginaLogin() {
     if (sesion) navigate('/');
   }, [navigate, sesion]);
 
-  function enviarLogin(evento: FormEvent<HTMLFormElement>): void {
+  async function enviarLogin(evento: FormEvent<HTMLFormElement>): Promise<void> {
     evento.preventDefault();
     setErrorLogin('');
 
     if (!usuarioLogin.trim() || !passLogin.trim()) {
-      setErrorLogin('Ingresa usuario y contrasena.');
+      setErrorLogin('Ingresa correo y contrasena.');
       return;
     }
 
-    const ok = iniciarSesion(usuarioLogin.trim(), passLogin.trim());
+    const ok = await iniciarSesion(usuarioLogin.trim(), passLogin.trim());
     if (!ok) {
-      setErrorLogin('Credenciales incorrectas.');
+      setErrorLogin('Credenciales incorrectas o usuario no registrado en Firebase.');
     }
   }
 
-  function enviarRegistro(evento: FormEvent<HTMLFormElement>): void {
+  async function enviarRegistro(evento: FormEvent<HTMLFormElement>): Promise<void> {
     evento.preventDefault();
     setErroresRegistro({});
     setMensajeRegistro('');
 
-    const resultado = registrarCliente({
+    const resultado = await registrarCliente({
       nombreCompleto,
       usuario: usuarioRegistro,
       pass: passRegistro,
@@ -76,11 +76,15 @@ export function PaginaLogin() {
       <section className="login-grid">
         <form className="panel formulario" onSubmit={enviarLogin}>
           <h2>Iniciar sesion</h2>
-          <p className="texto-ayuda">Admin de prueba: ADMIN / ADMIN123</p>
+          <p className="texto-ayuda">Usa un correo y contrasena registrados en Firebase Auth.</p>
 
           <label>
-            Usuario
-            <input value={usuarioLogin} onChange={(evento) => setUsuarioLogin(evento.target.value)} />
+            Correo
+            <input
+              type="email"
+              value={usuarioLogin}
+              onChange={(evento) => setUsuarioLogin(evento.target.value)}
+            />
           </label>
 
           <label>
@@ -107,8 +111,12 @@ export function PaginaLogin() {
           </label>
 
           <label>
-            Usuario
-            <input value={usuarioRegistro} onChange={(evento) => setUsuarioRegistro(evento.target.value)} />
+            Correo
+            <input
+              type="email"
+              value={usuarioRegistro}
+              onChange={(evento) => setUsuarioRegistro(evento.target.value)}
+            />
             {erroresRegistro.usuario && <span>{erroresRegistro.usuario}</span>}
           </label>
 
@@ -136,6 +144,7 @@ export function PaginaLogin() {
           </label>
 
           {mensajeRegistro && <p className="mensaje-exito">{mensajeRegistro}</p>}
+          {erroresRegistro.general && <p className="mensaje-error">{erroresRegistro.general}</p>}
           <button type="submit">Crear cuenta</button>
         </form>
       </section>
