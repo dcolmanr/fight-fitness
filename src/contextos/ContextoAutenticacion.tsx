@@ -1,114 +1,62 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  borrarSesion,
-  guardarSesion,
-  guardarUsuarios,
-  obtenerSedes,
-  obtenerSesionGuardada,
-  obtenerUsuarios,
-  prepararDatosIniciales,
-} from '../datos/almacenamiento';
-import { ErroresLogin, SesionUsuario, Usuario } from '../tipos/modelos';
+import { createContext, useState, useEffect, ReactNode } from "react";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from "firebase/auth";
+import { auth } from "../firebase/config";
 
-interface DatosRegistro {
-  usuario: string;
-  pass: string;
-  nombreCompleto: string;
-  sedeId: number;
+interface AuthContextType {
+  usuarioActual: User | null;
+  login: (correo: string, contrasena: string) => Promise<void>;
+  cerrarSesion: () => Promise<void>;
+  cargandoAuth: boolean;
+  errorAuth: string | null;
 }
 
-interface ContextoAutenticacionValor {
-  sesion: SesionUsuario | null;
-  iniciarSesion: (usuario: string, pass: string) => boolean;
-  registrarCliente: (datos: DatosRegistro) => { ok: boolean; errores: ErroresLogin };
-  cerrarSesion: () => void;
-  esAdmin: boolean;
-}
+export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-const ContextoAutenticacion = createContext<ContextoAutenticacionValor | undefined>(undefined);
-
-interface PropsProveedor {
+interface AuthProviderProps {
   children: ReactNode;
 }
 
-export function ProveedorAutenticacion({ children }: PropsProveedor) {
-  const [sesion, setSesion] = useState<SesionUsuario | null>(null);
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [usuarioActual, setUsuarioActual] = useState<User | null>(null);
+  const [cargandoAuth, setCargandoAuth] = useState(true);
+  const [errorAuth, setErrorAuth] = useState<string | null>(null);
 
   useEffect(() => {
-    prepararDatosIniciales();
-    setSesion(obtenerSesionGuardada());
+    const unsubscribe = onAuthStateChanged(auth, (usuarioFirebase) => {
+      setUsuarioActual(usuarioFirebase);
+      setCargandoAuth(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  function iniciarSesion(usuario: string, pass: string): boolean {
-    const usuarios = obtenerUsuarios();
-    const encontrado = usuarios.find((item) => item.usuario === usuario && item.pass === pass);
-
-    if (!encontrado) return false;
-
-    const nuevaSesion: SesionUsuario = {
-      usuario: encontrado.usuario,
-      rol: encontrado.rol,
-      sedeId: encontrado.sedeId,
-      nombreCompleto: encontrado.nombreCompleto || encontrado.usuario,
-    };
-
-    guardarSesion(nuevaSesion);
-    setSesion(nuevaSesion);
-    return true;
-  }
-
-  function registrarCliente(datos: DatosRegistro): { ok: boolean; errores: ErroresLogin } {
-    const errores: ErroresLogin = {};
-    const usuarios = obtenerUsuarios();
-    const sedesActivas = obtenerSedes().filter((sede) => sede.estado === 'Activa');
-
-    if (datos.nombreCompleto.trim().length < 3) errores.nombreCompleto = 'Ingresa nombre completo.';
-    if (datos.usuario.trim().length < 3) errores.usuario = 'El usuario debe tener al menos 3 caracteres.';
-    if (datos.pass.trim().length < 6) errores.pass = 'La contrasena debe tener al menos 6 caracteres.';
-    if (!sedesActivas.some((sede) => sede.id === datos.sedeId)) errores.sedeId = 'Selecciona una sede activa.';
-    if (usuarios.some((item) => item.usuario.toLowerCase() === datos.usuario.toLowerCase())) {
-      errores.usuario = 'Ese usuario ya existe.';
+  const login = async (correo: string, contrasena: string) => {
+    setErrorAuth(null);
+    try {
+      await signInWithEmailAndPassword(auth, correo, contrasena);
+    } catch (error: any) {
+      console.error("Error al iniciar sesión:", error);
+      setErrorAuth("Correo o contraseña incorrectos. Inténtalo de nuevo.");
+      throw error; 
     }
+  };
 
-    if (Object.keys(errores).length > 0) {
-      return { ok: false, errores };
+  const cerrarSesion = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
     }
+  };
 
-    const nuevoUsuario: Usuario = {
-      usuario: datos.usuario.trim(),
-      pass: datos.pass.trim(),
-      rol: 'cliente',
-      sedeId: datos.sedeId,
-      nombreCompleto: datos.nombreCompleto.trim(),
-    };
-
-    guardarUsuarios([...usuarios, nuevoUsuario]);
-    return { ok: true, errores: {} };
-  }
-
-  function cerrarSesion(): void {
-    borrarSesion();
-    setSesion(null);
-  }
-
-  const valor = useMemo<ContextoAutenticacionValor>(
-    () => ({
-      sesion,
-      iniciarSesion,
-      registrarCliente,
-      cerrarSesion,
-      esAdmin: sesion?.rol === 'admin',
-    }),
-    [sesion],
+  return (
+    <AuthContext.Provider value={{ usuarioActual, login, cerrarSesion, cargandoAuth, errorAuth }}>
+      {cargandoAuth ? (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20vh' }}>
+          <h2>Cargando sesión...</h2>
+        </div>
+      ) : (
+        children
+      )}
+    </AuthContext.Provider>
   );
-
-  return <ContextoAutenticacion.Provider value={valor}>{children}</ContextoAutenticacion.Provider>;
-}
-
-export function usarAutenticacion(): ContextoAutenticacionValor {
-  const contexto = useContext(ContextoAutenticacion);
-  if (!contexto) {
-    throw new Error('usarAutenticacion debe usarse dentro de ProveedorAutenticacion');
-  }
-  return contexto;
-}
+};
