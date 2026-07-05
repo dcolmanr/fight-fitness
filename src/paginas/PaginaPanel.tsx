@@ -21,10 +21,9 @@ export function PaginaPanel() {
     <section className="pagina">
       <div className="encabezado-pagina">
         <div>
-          <h1>Panel de modulo 2</h1>
-          <p>Autenticacion, sedes y traslado de clientes para Fight & Fitness Center.</p>
+          <h1>Autenticacion, sedes y traslado de clientes para Fight & Fitness Center.</h1>
         </div>
-        <a className="boton-secundario" href="/crud_agendas.html">Ir al CRUD de agendas</a>
+        <Link className="boton-secundario" to="/agendas">Ir a agendas</Link>
       </div>
 
       <div className="tarjetas-resumen">
@@ -56,15 +55,19 @@ export function PaginaPanel() {
       <div className="grid-dos">
         <Link className="accion-grande" to="/sedes">
           Gestionar sedes
-          <span>CRUD completo con busqueda, edicion y eliminacion.</span>
+          <span>Vea las sucursales, busque sedes específicas y actualice su información.</span>
         </Link>
         <Link className="accion-grande" to="/traslados">
           Solicitudes de traslado
-          <span>Clientes solicitan cambio y admin lo aprueba o rechaza.</span>
+          <span>Solicite su cambio de sucursal y revise el estado de su aprobación.</span>
         </Link>
         <Link className="accion-grande" to="/membresias">
           Gestionar membresias
-          <span>Activa cuentas, modifica planes y revisa nivel de acceso.</span>
+          <span>Consulte su cuenta activa, cambie su plan actual y revise sus accesos.</span>
+        </Link>
+        <Link className="accion-grande" to="/agendas">
+          Agendas de entrenamiento
+          <span>Visualice y administre sus horarios de entrenamiento en tiempo real.</span>
         </Link>
       </div>
     </section>

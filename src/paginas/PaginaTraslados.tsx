@@ -96,7 +96,7 @@ export function PaginaTraslados() {
       <div className="encabezado-pagina">
         <div>
           <h1>Solicitudes de traslado</h1>
-          <p>El cliente solicita cambio de sede y el administrador procesa la respuesta.</p>
+          <p>Elija la sede que más le acomode para entrenar y envíenos su solicitud de cambio.</p>
         </div>
       </div>
 

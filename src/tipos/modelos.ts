@@ -57,6 +57,13 @@ export interface Membresia {
   metodoPago: string;
   observacion: string;
 }
+export interface AgendaEntrenamiento {
+  id: string;
+  usuario: string;
+  horario: string;
+  estado: EstadoSolicitud;
+  creadoEn?: unknown;
+}
 
 export interface ErroresLogin {
   usuario?: string;

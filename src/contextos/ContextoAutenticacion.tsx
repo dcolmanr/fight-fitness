@@ -73,7 +73,7 @@ export function ProveedorAutenticacion({ children }: PropsProveedor) {
 
     if (datos.nombreCompleto.trim().length < 3) errores.nombreCompleto = 'Ingresa nombre completo.';
     if (!datos.usuario.includes('@')) errores.usuario = 'Ingresa un correo electronico valido.';
-    if (datos.pass.trim().length < 6) errores.pass = 'La contrasena debe tener al menos 6 caracteres.';
+    if (datos.pass.trim().length < 6) errores.pass = 'La contraseña debe tener al menos 6 caracteres.';
     if (!sedesActivas.some((sede) => sede.id === datos.sedeId)) errores.sedeId = 'Selecciona una sede activa.';
 
     if (Object.keys(errores).length > 0) {
@@ -152,11 +152,11 @@ function esCorreoAdmin(correo: string): boolean {
 function traducirErrorFirebase(error: unknown): string {
   const codigo = error instanceof FirebaseError ? error.code : '';
 
-  if (codigo === 'auth/invalid-credential') return 'Correo o contrasena incorrectos.';
+  if (codigo === 'auth/invalid-credential') return 'Correo o contraseña incorrectos.';
   if (codigo === 'auth/user-not-found') return 'No existe una cuenta con ese correo.';
-  if (codigo === 'auth/wrong-password') return 'La contrasena no es correcta.';
+  if (codigo === 'auth/wrong-password') return 'La contraseña no es correcta.';
   if (codigo === 'auth/email-already-in-use') return 'Ese correo ya esta registrado.';
-  if (codigo === 'auth/weak-password') return 'La contrasena debe tener al menos 6 caracteres.';
+  if (codigo === 'auth/weak-password') return 'La contraseña debe tener al menos 6 caracteres.';
   if (codigo === 'auth/invalid-email') return 'Ingresa un correo electronico valido.';
 
   return 'No se pudo completar la operacion con Firebase.';

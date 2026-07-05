@@ -32,7 +32,7 @@ export function PaginaLogin() {
     setErrorLogin('');
 
     if (!usuarioLogin.trim() || !passLogin.trim()) {
-      setErrorLogin('Ingresa correo y contrasena.');
+      setErrorLogin('Ingresa correo y contraseña.');
       return;
     }
 
@@ -76,7 +76,7 @@ export function PaginaLogin() {
       <section className="login-grid">
         <form className="panel formulario" onSubmit={enviarLogin}>
           <h2>Iniciar sesion</h2>
-          <p className="texto-ayuda">Usa un correo y contrasena registrados en Firebase Auth.</p>
+          <p className="texto-ayuda">Ingresa con tu correo y contraseña.</p>
 
           <label>
             Correo
@@ -88,7 +88,7 @@ export function PaginaLogin() {
           </label>
 
           <label>
-            Contrasena
+            Contraseña
             <input
               type="password"
               value={passLogin}
@@ -102,7 +102,7 @@ export function PaginaLogin() {
 
         <form className="panel formulario" onSubmit={enviarRegistro}>
           <h2>Registro de cliente</h2>
-          <p className="texto-ayuda">El cliente elige una sede inicial, tal como pide el modulo 2.</p>
+          <p className="texto-ayuda">Completa tus datos y elige la sede donde entrenaras.</p>
 
           <label>
             Nombre completo
@@ -121,7 +121,7 @@ export function PaginaLogin() {
           </label>
 
           <label>
-            Contrasena
+            Contraseña
             <input
               type="password"
               value={passRegistro}

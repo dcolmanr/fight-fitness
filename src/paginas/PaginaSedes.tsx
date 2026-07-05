@@ -116,8 +116,8 @@ export function PaginaSedes() {
     <section className="pagina">
       <div className="encabezado-pagina">
         <div>
-          <h1>CRUD de Gestion de Sedes</h1>
-          <p>Continuacion del proyecto Fight & Fitness: administracion territorial de clientes.</p>
+          <h1>Gestion de Sedes</h1>
+          <p>Encuentre su sucursal, busque la ubicación más cercana y revise los horarios disponibles para entrenar.</p>
         </div>
       </div>
 

@@ -157,7 +157,7 @@ export function PaginaMembresias() {
       <div className="encabezado-pagina">
         <div>
           <h1>CRUD de Gestion de Membresias</h1>
-          <p>Administra el estado financiero y el nivel de acceso de cada cliente.</p>
+          <p>Revise los detalles de su plan actual, elija cómo prefiere pagar y asegure su continuidad en Fight & Fitness</p>
         </div>
       </div>
 
