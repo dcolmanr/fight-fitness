@@ -139,41 +139,43 @@ export function PaginaSedes() {
       </div>
 
       <div className="grid-dos">
-        <form className="panel formulario" onSubmit={guardarSede}>
-          <h2>{sedeEditandoId ? 'Editar sede' : 'Registrar sede'}</h2>
-          <label>
-            Nombre
-            <input value={formulario.nombre} onChange={(evento) => cambiarCampo('nombre', evento.target.value)} />
-          </label>
-          <label>
-            Direccion
-            <input value={formulario.direccion} onChange={(evento) => cambiarCampo('direccion', evento.target.value)} />
-          </label>
-          <label>
-            Comuna
-            <input value={formulario.comuna} onChange={(evento) => cambiarCampo('comuna', evento.target.value)} />
-          </label>
-          <label>
-            Telefono
-            <input value={formulario.telefono} onChange={(evento) => cambiarCampo('telefono', evento.target.value)} />
-          </label>
-          <label>
-            Estado
-            <select
-              value={formulario.estado}
-              onChange={(evento) => cambiarCampo('estado', evento.target.value as EstadoSede)}
-            >
-              <option value="Activa">Activa</option>
-              <option value="Inactiva">Inactiva</option>
-            </select>
-          </label>
+        {esAdmin && (
+          <form className="panel formulario" onSubmit={guardarSede}>
+            <h2>{sedeEditandoId ? 'Editar sede' : 'Registrar sede'}</h2>
+            <label>
+              Nombre
+              <input value={formulario.nombre} onChange={(evento) => cambiarCampo('nombre', evento.target.value)} />
+            </label>
+            <label>
+              Direccion
+              <input value={formulario.direccion} onChange={(evento) => cambiarCampo('direccion', evento.target.value)} />
+            </label>
+            <label>
+              Comuna
+              <input value={formulario.comuna} onChange={(evento) => cambiarCampo('comuna', evento.target.value)} />
+            </label>
+            <label>
+              Telefono
+              <input value={formulario.telefono} onChange={(evento) => cambiarCampo('telefono', evento.target.value)} />
+            </label>
+            <label>
+              Estado
+              <select
+                value={formulario.estado}
+                onChange={(evento) => cambiarCampo('estado', evento.target.value as EstadoSede)}
+              >
+                <option value="Activa">Activa</option>
+                <option value="Inactiva">Inactiva</option>
+              </select>
+            </label>
 
-          {errorFormulario && <p className="mensaje-error">{errorFormulario}</p>}
-          <div className="fila-botones">
-            <button type="submit">{sedeEditandoId ? 'Actualizar sede' : 'Crear sede'}</button>
-            <button type="button" className="boton-secundario" onClick={limpiarFormulario}>Limpiar</button>
-          </div>
-        </form>
+            {errorFormulario && <p className="mensaje-error">{errorFormulario}</p>}
+            <div className="fila-botones">
+              <button type="submit">{sedeEditandoId ? 'Actualizar sede' : 'Crear sede'}</button>
+              <button type="button" className="boton-secundario" onClick={limpiarFormulario}>Limpiar</button>
+            </div>
+          </form>
+        )}
 
         <div className="panel">
           <h2>Listado de sedes</h2>
