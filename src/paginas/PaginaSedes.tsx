@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
-import { guardarSedes, obtenerSedes, obtenerUsuarios } from '../datos/almacenamiento';
+import { actualizarSede, crearSede, eliminarSede as eliminarSedeDoc, obtenerSedes, obtenerUsuarios } from '../datos/almacenamiento';
 import { EstadoSede, Sede } from '../tipos/modelos';
 
 interface FormularioSede {
@@ -23,13 +23,21 @@ const formularioInicial: FormularioSede = {
 export function PaginaSedes() {
   const { esAdmin } = usarAutenticacion();
   const [sedes, setSedes] = useState<Sede[]>([]);
+  const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
   const [formulario, setFormulario] = useState<FormularioSede>(formularioInicial);
   const [sedeEditandoId, setSedeEditandoId] = useState<number | null>(null);
   const [errorFormulario, setErrorFormulario] = useState('');
 
+  async function cargarSedes(): Promise<void> {
+    setCargando(true);
+    const todas = await obtenerSedes();
+    setSedes(todas);
+    setCargando(false);
+  }
+
   useEffect(() => {
-    setSedes(obtenerSedes());
+    cargarSedes();
   }, []);
 
   const sedesFiltradas = useMemo(() => {
@@ -41,11 +49,6 @@ export function PaginaSedes() {
     );
   }, [busqueda, sedes]);
 
-  function refrescarSedes(nuevasSedes: Sede[]): void {
-    guardarSedes(nuevasSedes);
-    setSedes(nuevasSedes);
-  }
-
   function cambiarCampo(campo: keyof FormularioSede, valor: string): void {
     setFormulario((actual) => ({ ...actual, [campo]: valor }));
   }
@@ -56,7 +59,7 @@ export function PaginaSedes() {
     setErrorFormulario('');
   }
 
-  function guardarSede(evento: FormEvent<HTMLFormElement>): void {
+  async function guardarSede(evento: FormEvent<HTMLFormElement>): Promise<void> {
     evento.preventDefault();
     setErrorFormulario('');
 
@@ -76,20 +79,17 @@ export function PaginaSedes() {
       return;
     }
 
-    if (sedeEditandoId) {
-      const actualizadas = sedes.map((sede) =>
-        sede.id === sedeEditandoId ? { ...sede, ...formulario } : sede,
-      );
-      refrescarSedes(actualizadas);
-    } else {
-      const nuevaSede: Sede = {
-        id: Date.now(),
-        ...formulario,
-      };
-      refrescarSedes([...sedes, nuevaSede]);
+    try {
+      if (sedeEditandoId) {
+        await actualizarSede(sedeEditandoId, formulario);
+      } else {
+        await crearSede(formulario);
+      }
+      await cargarSedes();
+      limpiarFormulario();
+    } catch (error) {
+      setErrorFormulario('No se pudo guardar la sede en Firestore. Intenta nuevamente.');
     }
-
-    limpiarFormulario();
   }
 
   function editarSede(sede: Sede): void {
@@ -103,7 +103,7 @@ export function PaginaSedes() {
     });
   }
 
-  function eliminarSede(id: number): void {
+  async function eliminarSede(id: number): Promise<void> {
     if (!esAdmin) return;
 
     const usuarios = obtenerUsuarios();
@@ -115,7 +115,13 @@ export function PaginaSedes() {
     }
 
     if (!confirm('Seguro que deseas eliminar esta sede?')) return;
-    refrescarSedes(sedes.filter((sede) => sede.id !== id));
+
+    try {
+      await eliminarSedeDoc(id);
+      await cargarSedes();
+    } catch (error) {
+      alert('No se pudo eliminar la sede en Firestore. Intenta nuevamente.');
+    }
   }
 
   return (
@@ -176,33 +182,37 @@ export function PaginaSedes() {
           </label>
 
           <div className="tabla-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>Sede</th>
-                  <th>Comuna</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sedesFiltradas.map((sede) => (
-                  <tr key={sede.id}>
-                    <td>
-                      <strong>{sede.nombre}</strong>
-                      <span>{sede.direccion}</span>
-                    </td>
-                    <td>{sede.comuna}</td>
-                    <td><span className={`estado ${sede.estado.toLowerCase()}`}>{sede.estado}</span></td>
-                    <td className="acciones-tabla">
-                      <Link to={`/sedes/${sede.id}`}>Detalle</Link>
-                      {esAdmin && <button type="button" onClick={() => editarSede(sede)}>Editar</button>}
-                      {esAdmin && <button type="button" onClick={() => eliminarSede(sede.id)}>Eliminar</button>}
-                    </td>
+            {cargando ? (
+              <p>Cargando sedes...</p>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Sede</th>
+                    <th>Comuna</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sedesFiltradas.map((sede) => (
+                    <tr key={sede.id}>
+                      <td>
+                        <strong>{sede.nombre}</strong>
+                        <span>{sede.direccion}</span>
+                      </td>
+                      <td>{sede.comuna}</td>
+                      <td><span className={`estado ${sede.estado.toLowerCase()}`}>{sede.estado}</span></td>
+                      <td className="acciones-tabla">
+                        <Link to={`/sedes/${sede.id}`}>Detalle</Link>
+                        {esAdmin && <button type="button" onClick={() => editarSede(sede)}>Editar</button>}
+                        {esAdmin && <button type="button" onClick={() => eliminarSede(sede.id)}>Eliminar</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

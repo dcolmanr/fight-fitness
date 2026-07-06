@@ -1,12 +1,15 @@
+import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
-  buscarNombreSede,
   buscarNombreUsuario,
+  nombreSedeEnLista,
   obtenerMembresias,
+  obtenerSedes,
   obtenerUsuarios,
   planesMembresia,
 } from '../datos/almacenamiento';
+import { Sede } from '../tipos/modelos';
 
 function formatearPrecio(valor: number): string {
   return valor.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
@@ -16,6 +19,20 @@ export function PaginaDetalleMembresia() {
   const { id } = useParams<{ id: string }>();
   const { sesion, esAdmin } = usarAutenticacion();
   const membresia = obtenerMembresias().find((item) => item.id === Number(id));
+  const [sedes, setSedes] = useState<Sede[]>([]);
+
+  useEffect(() => {
+    let activo = true;
+
+    (async () => {
+      const todas = await obtenerSedes();
+      if (activo) setSedes(todas);
+    })();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   if (!membresia) {
     return (
@@ -50,7 +67,7 @@ export function PaginaDetalleMembresia() {
           <h2>Cliente</h2>
           <p><strong>Nombre:</strong> {buscarNombreUsuario(membresia.usuario)}</p>
           <p><strong>Usuario:</strong> {membresia.usuario}</p>
-          <p><strong>Sede:</strong> {buscarNombreSede(usuario?.sedeId ?? null)}</p>
+          <p><strong>Sede:</strong> {nombreSedeEnLista(sedes, usuario?.sedeId ?? null)}</p>
         </article>
 
         <article className="panel ficha-detalle">

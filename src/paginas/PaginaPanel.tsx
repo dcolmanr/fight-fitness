@@ -1,21 +1,36 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
-  buscarNombreSede,
+  nombreSedeEnLista,
   obtenerMembresias,
   obtenerSedes,
   obtenerTraslados,
   obtenerUsuarios,
 } from '../datos/almacenamiento';
+import { Sede } from '../tipos/modelos';
 
 export function PaginaPanel() {
   const { sesion, esAdmin } = usarAutenticacion();
-  const sedes = obtenerSedes();
+  const [sedes, setSedes] = useState<Sede[]>([]);
   const usuarios = obtenerUsuarios();
   const traslados = obtenerTraslados();
   const membresias = obtenerMembresias();
   const pendientes = traslados.filter((solicitud) => solicitud.estado === 'Pendiente').length;
   const activas = membresias.filter((membresia) => membresia.estado === 'Activa').length;
+
+  useEffect(() => {
+    let activo = true;
+
+    (async () => {
+      const todas = await obtenerSedes();
+      if (activo) setSedes(todas);
+    })();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   return (
     <section className="pagina">
@@ -49,7 +64,7 @@ export function PaginaPanel() {
         <h2>Sesion actual</h2>
         <p><strong>Usuario:</strong> {sesion?.nombreCompleto}</p>
         <p><strong>Rol:</strong> {esAdmin ? 'Administrador' : 'Cliente'}</p>
-        <p><strong>Sede:</strong> {buscarNombreSede(sesion?.sedeId ?? null)}</p>
+        <p><strong>Sede:</strong> {nombreSedeEnLista(sedes, sesion?.sedeId ?? null)}</p>
       </div>
 
       <div className="grid-dos">

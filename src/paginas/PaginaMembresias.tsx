@@ -2,14 +2,15 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
-  buscarNombreSede,
   buscarNombreUsuario,
   guardarMembresias,
+  nombreSedeEnLista,
   obtenerMembresias,
+  obtenerSedes,
   obtenerUsuarios,
   planesMembresia,
 } from '../datos/almacenamiento';
-import { EstadoMembresia, Membresia, TipoPlanMembresia, Usuario } from '../tipos/modelos';
+import { EstadoMembresia, Membresia, Sede, TipoPlanMembresia, Usuario } from '../tipos/modelos';
 
 interface FormularioMembresia {
   usuario: string;
@@ -51,14 +52,26 @@ export function PaginaMembresias() {
   const { sesion, esAdmin } = usarAutenticacion();
   const [membresias, setMembresias] = useState<Membresia[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [sedes, setSedes] = useState<Sede[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [formulario, setFormulario] = useState<FormularioMembresia>(formularioInicial);
   const [membresiaEditandoId, setMembresiaEditandoId] = useState<number | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let activo = true;
+
     setMembresias(obtenerMembresias());
     setUsuarios(obtenerUsuarios().filter((usuario) => usuario.rol === 'cliente'));
+
+    (async () => {
+      const todas = await obtenerSedes();
+      if (activo) setSedes(todas);
+    })();
+
+    return () => {
+      activo = false;
+    };
   }, []);
 
   const membresiasVisibles = useMemo(() => {
@@ -184,7 +197,7 @@ export function PaginaMembresias() {
                 <option value="">Selecciona un cliente</option>
                 {usuarios.map((usuario) => (
                   <option key={usuario.usuario} value={usuario.usuario}>
-                    {usuario.nombreCompleto} - {buscarNombreSede(usuario.sedeId)}
+                    {usuario.nombreCompleto} - {nombreSedeEnLista(sedes, usuario.sedeId)}
                   </option>
                 ))}
               </select>

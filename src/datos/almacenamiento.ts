@@ -1,6 +1,8 @@
+import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc, } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { Membresia, PlanMembresia, Sede, SesionUsuario, SolicitudTraslado, Usuario } from '../tipos/modelos';
 
-const CLAVE_SEDES = 'sedes';
+const COLECCION_SEDES = 'sedes';
 const CLAVE_USUARIOS = 'usuarios';
 const CLAVE_SESION = 'sesionFightFitness';
 const CLAVE_TRASLADOS = 'solicitudesTraslado';
@@ -82,9 +84,12 @@ function escribirJson<T>(clave: string, valor: T): void {
   localStorage.setItem(clave, JSON.stringify(valor));
 }
 
-export function prepararDatosIniciales(): void {
-  if (!localStorage.getItem(CLAVE_SEDES)) {
-    escribirJson(CLAVE_SEDES, sedesIniciales);
+export async function prepararDatosIniciales(): Promise<void> {
+  const snapshotSedes = await getDocs(collection(db, COLECCION_SEDES));
+  if (snapshotSedes.empty) {
+    await Promise.all(
+      sedesIniciales.map((sede) => setDoc(doc(db, COLECCION_SEDES, String(sede.id)), sede)),
+    );
   }
 
   if (!localStorage.getItem(CLAVE_USUARIOS)) {
@@ -100,12 +105,23 @@ export function prepararDatosIniciales(): void {
   }
 }
 
-export function obtenerSedes(): Sede[] {
-  return leerJson<Sede[]>(CLAVE_SEDES, []);
+export async function obtenerSedes(): Promise<Sede[]> {
+  const snapshot = await getDocs(collection(db, COLECCION_SEDES));
+  return snapshot.docs.map((documento) => documento.data() as Sede);
 }
 
-export function guardarSedes(sedes: Sede[]): void {
-  escribirJson(CLAVE_SEDES, sedes);
+export async function crearSede(datos: Omit<Sede, 'id'>): Promise<Sede> {
+  const nuevaSede: Sede = { id: Date.now(), ...datos };
+  await setDoc(doc(db, COLECCION_SEDES, String(nuevaSede.id)), nuevaSede);
+  return nuevaSede;
+}
+
+export async function actualizarSede(id: number, datos: Partial<Omit<Sede, 'id'>>): Promise<void> {
+  await updateDoc(doc(db, COLECCION_SEDES, String(id)), datos);
+}
+
+export async function eliminarSede(id: number): Promise<void> {
+  await deleteDoc(doc(db, COLECCION_SEDES, String(id)));
 }
 
 export function obtenerUsuarios(): Usuario[] {
@@ -144,9 +160,9 @@ export function borrarSesion(): void {
   localStorage.removeItem(CLAVE_SESION);
 }
 
-export function buscarNombreSede(sedeId: number | null): string {
+export function nombreSedeEnLista(sedes: Sede[], sedeId: number | null): string {
   if (sedeId === null) return 'Sin sede asignada';
-  const sede = obtenerSedes().find((item) => item.id === sedeId);
+  const sede = sedes.find((item) => item.id === sedeId);
   return sede ? sede.nombre : 'Sede no encontrada';
 }
 

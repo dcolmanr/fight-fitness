@@ -43,15 +43,29 @@ export function ProveedorAutenticacion({ children }: PropsProveedor) {
   const [errorAuth, setErrorAuth] = useState<string | null>(null);
 
   useEffect(() => {
-    prepararDatosIniciales();
+    let activo = true;
 
-    const unsubscribe = onAuthStateChanged(auth, (usuarioFirebase) => {
+    const unsubscribe = onAuthStateChanged(auth, async (usuarioFirebase) => {
+      if (!activo) return;
+
       setUsuarioActual(usuarioFirebase);
       setSesion(usuarioFirebase ? crearSesionDesdeFirebase(usuarioFirebase) : null);
       setCargandoAuth(false);
+
+      try {
+        // Solo tiene efecto real si el usuario logeado es el admin (las reglas de
+        // Firestore bloquean la escritura para cualquier otro caso). Si falla por
+        // permisos (visitante sin sesion, cliente logeado, etc.) se ignora.
+        await prepararDatosIniciales();
+      } catch {
+        // Sin permisos para sembrar las sedes iniciales; no es un error fatal.
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      activo = false;
+      unsubscribe();
+    };
   }, []);
 
   async function iniciarSesion(usuario: string, pass: string): Promise<boolean> {
@@ -69,7 +83,7 @@ export function ProveedorAutenticacion({ children }: PropsProveedor) {
 
   async function registrarCliente(datos: DatosRegistro): Promise<{ ok: boolean; errores: ErroresLogin }> {
     const errores: ErroresLogin = {};
-    const sedesActivas = obtenerSedes().filter((sede) => sede.estado === 'Activa');
+    const sedesActivas = (await obtenerSedes()).filter((sede) => sede.estado === 'Activa');
 
     if (datos.nombreCompleto.trim().length < 3) errores.nombreCompleto = 'Ingresa nombre completo.';
     if (!datos.usuario.includes('@')) errores.usuario = 'Ingresa un correo electronico valido.';

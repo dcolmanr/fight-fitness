@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
-  buscarNombreSede,
   guardarTraslados,
   guardarUsuarios,
+  nombreSedeEnLista,
   obtenerSedes,
   obtenerTraslados,
   obtenerUsuarios,
@@ -19,8 +19,18 @@ export function PaginaTraslados() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setSedes(obtenerSedes());
+    let activo = true;
+
+    (async () => {
+      const todas = await obtenerSedes();
+      if (activo) setSedes(todas);
+    })();
+
     setTraslados(obtenerTraslados());
+
+    return () => {
+      activo = false;
+    };
   }, []);
 
   const sedesDestino = useMemo(
@@ -103,7 +113,7 @@ export function PaginaTraslados() {
       {!esAdmin && (
         <form className="panel formulario formulario-horizontal" onSubmit={enviarSolicitud}>
           <h2>Nueva solicitud</h2>
-          <p>Sede actual: <strong>{buscarNombreSede(sesion?.sedeId ?? null)}</strong></p>
+          <p>Sede actual: <strong>{nombreSedeEnLista(sedes, sesion?.sedeId ?? null)}</strong></p>
 
           <label>
             Sede destino
@@ -145,8 +155,8 @@ export function PaginaTraslados() {
               {trasladosVisibles.map((solicitud) => (
                 <tr key={solicitud.id}>
                   <td>{solicitud.usuario}</td>
-                  <td>{buscarNombreSede(solicitud.sedeOrigenId)}</td>
-                  <td>{buscarNombreSede(solicitud.sedeDestinoId)}</td>
+                  <td>{nombreSedeEnLista(sedes, solicitud.sedeOrigenId)}</td>
+                  <td>{nombreSedeEnLista(sedes, solicitud.sedeDestinoId)}</td>
                   <td>{solicitud.motivo}</td>
                   <td><span className={`estado ${solicitud.estado.toLowerCase()}`}>{solicitud.estado}</span></td>
                   {esAdmin && (

@@ -19,8 +19,22 @@ export function PaginaLogin() {
   const [mensajeRegistro, setMensajeRegistro] = useState('');
 
   useEffect(() => {
-    prepararDatosIniciales();
-    setSedes(obtenerSedes().filter((sede) => sede.estado === 'Activa'));
+    let activo = true;
+
+    (async () => {
+      try {
+        await prepararDatosIniciales();
+      } catch {
+        // El visitante no tiene permiso para sembrar (no es admin); se ignora.
+      }
+
+      const todas = await obtenerSedes();
+      if (activo) setSedes(todas.filter((sede) => sede.estado === 'Activa'));
+    })();
+
+    return () => {
+      activo = false;
+    };
   }, []);
 
   useEffect(() => {
