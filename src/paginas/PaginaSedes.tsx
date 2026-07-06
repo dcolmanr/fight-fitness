@@ -70,6 +70,12 @@ export function PaginaSedes() {
       return;
     }
 
+    const soloNumeros = formulario.telefono.replace(/[^0-9]/g, '');
+    if (soloNumeros.length < 5) {
+      setErrorFormulario('El número telefónico debe contener al menos 5 dígitos.');
+      return;
+    }
+
     if (sedeEditandoId) {
       const actualizadas = sedes.map((sede) =>
         sede.id === sedeEditandoId ? { ...sede, ...formulario } : sede,
