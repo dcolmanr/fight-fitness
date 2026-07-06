@@ -2,9 +2,9 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
-  buscarNombreUsuario,
   guardarMembresias,
   nombreSedeEnLista,
+  nombreUsuarioEnLista,
   obtenerMembresias,
   obtenerSedes,
   obtenerUsuarios,
@@ -62,11 +62,13 @@ export function PaginaMembresias() {
     let activo = true;
 
     setMembresias(obtenerMembresias());
-    setUsuarios(obtenerUsuarios().filter((usuario) => usuario.rol === 'cliente'));
 
     (async () => {
-      const todas = await obtenerSedes();
-      if (activo) setSedes(todas);
+      const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+      if (activo) {
+        setSedes(todasSedes);
+        setUsuarios(todosUsuarios.filter((usuario) => usuario.rol === 'cliente'));
+      }
     })();
 
     return () => {
@@ -83,13 +85,13 @@ export function PaginaMembresias() {
     return base.filter((membresia) =>
       [
         membresia.usuario,
-        buscarNombreUsuario(membresia.usuario),
+        nombreUsuarioEnLista(usuarios, membresia.usuario),
         membresia.plan,
         membresia.estado,
         membresia.metodoPago,
       ].some((valor) => valor.toLowerCase().includes(texto)),
     );
-  }, [busqueda, esAdmin, membresias, sesion?.usuario]);
+  }, [busqueda, esAdmin, membresias, sesion?.usuario, usuarios]);
 
   function refrescarMembresias(nuevasMembresias: Membresia[]): void {
     guardarMembresias(nuevasMembresias);
@@ -300,7 +302,7 @@ export function PaginaMembresias() {
                 {membresiasVisibles.map((membresia) => (
                   <tr key={membresia.id}>
                     <td>
-                      <strong>{buscarNombreUsuario(membresia.usuario)}</strong>
+                      <strong>{nombreUsuarioEnLista(usuarios, membresia.usuario)}</strong>
                       <span>{membresia.usuario}</span>
                     </td>
                     <td>

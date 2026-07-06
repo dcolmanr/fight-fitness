@@ -1,10 +1,9 @@
-import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc, } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Membresia, PlanMembresia, Sede, SesionUsuario, SolicitudTraslado, Usuario } from '../tipos/modelos';
+import { Membresia, PlanMembresia, Sede, SolicitudTraslado, Usuario } from '../tipos/modelos';
 
 const COLECCION_SEDES = 'sedes';
-const CLAVE_USUARIOS = 'usuarios';
-const CLAVE_SESION = 'sesionFightFitness';
+const COLECCION_USUARIOS = 'usuarios';
 const CLAVE_TRASLADOS = 'solicitudesTraslado';
 const CLAVE_MEMBRESIAS = 'membresias';
 
@@ -32,16 +31,6 @@ const sedesIniciales: Sede[] = [
     comuna: 'Tierra Amarilla',
     telefono: '+56 9 7722 4400',
     estado: 'Activa',
-  },
-];
-
-const usuariosIniciales: Usuario[] = [
-  {
-    usuario: 'ADMIN',
-    pass: 'ADMIN123',
-    rol: 'admin',
-    sedeId: null,
-    nombreCompleto: 'Administrador Fight & Fitness',
   },
 ];
 
@@ -92,10 +81,6 @@ export async function prepararDatosIniciales(): Promise<void> {
     );
   }
 
-  if (!localStorage.getItem(CLAVE_USUARIOS)) {
-    escribirJson(CLAVE_USUARIOS, usuariosIniciales);
-  }
-
   if (!localStorage.getItem(CLAVE_TRASLADOS)) {
     escribirJson(CLAVE_TRASLADOS, []);
   }
@@ -124,12 +109,25 @@ export async function eliminarSede(id: number): Promise<void> {
   await deleteDoc(doc(db, COLECCION_SEDES, String(id)));
 }
 
-export function obtenerUsuarios(): Usuario[] {
-  return leerJson<Usuario[]>(CLAVE_USUARIOS, []);
+export async function obtenerUsuarios(): Promise<Usuario[]> {
+  const snapshot = await getDocs(collection(db, COLECCION_USUARIOS));
+  return snapshot.docs.map((documento) => documento.data() as Usuario);
 }
 
-export function guardarUsuarios(usuarios: Usuario[]): void {
-  escribirJson(CLAVE_USUARIOS, usuarios);
+// El id del documento es el correo (igual que sedes usa un id numerico).
+// Asi cualquier componente que ya identificaba al usuario por su correo
+// (traslados, membresias) puede seguir haciendolo sin cambios.
+export async function obtenerPerfilUsuario(correo: string): Promise<Usuario | null> {
+  const snapshot = await getDoc(doc(db, COLECCION_USUARIOS, correo));
+  return snapshot.exists() ? (snapshot.data() as Usuario) : null;
+}
+
+export async function crearUsuario(datos: Usuario): Promise<void> {
+  await setDoc(doc(db, COLECCION_USUARIOS, datos.usuario), datos);
+}
+
+export async function actualizarUsuario(correo: string, datos: Partial<Omit<Usuario, 'usuario'>>): Promise<void> {
+  await updateDoc(doc(db, COLECCION_USUARIOS, correo), datos);
 }
 
 export function obtenerTraslados(): SolicitudTraslado[] {
@@ -148,25 +146,13 @@ export function guardarMembresias(membresias: Membresia[]): void {
   escribirJson(CLAVE_MEMBRESIAS, membresias);
 }
 
-export function obtenerSesionGuardada(): SesionUsuario | null {
-  return leerJson<SesionUsuario | null>(CLAVE_SESION, null);
-}
-
-export function guardarSesion(sesion: SesionUsuario): void {
-  escribirJson(CLAVE_SESION, sesion);
-}
-
-export function borrarSesion(): void {
-  localStorage.removeItem(CLAVE_SESION);
-}
-
 export function nombreSedeEnLista(sedes: Sede[], sedeId: number | null): string {
   if (sedeId === null) return 'Sin sede asignada';
   const sede = sedes.find((item) => item.id === sedeId);
   return sede ? sede.nombre : 'Sede no encontrada';
 }
 
-export function buscarNombreUsuario(usuario: string): string {
-  const encontrado = obtenerUsuarios().find((item) => item.usuario === usuario);
-  return encontrado?.nombreCompleto || usuario;
+export function nombreUsuarioEnLista(usuarios: Usuario[], correo: string): string {
+  const encontrado = usuarios.find((item) => item.usuario === correo);
+  return encontrado?.nombreCompleto || correo;
 }

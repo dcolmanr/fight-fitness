@@ -9,8 +9,8 @@ import {
 } from 'firebase/auth';
 import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { auth } from '../firebase/config';
-import { obtenerSedes, prepararDatosIniciales } from '../datos/almacenamiento';
-import { ErroresLogin, RolUsuario, SesionUsuario } from '../tipos/modelos';
+import { crearUsuario, obtenerPerfilUsuario, obtenerSedes, prepararDatosIniciales } from '../datos/almacenamiento';
+import { ErroresLogin, SesionUsuario } from '../tipos/modelos';
 
 interface DatosRegistro {
   usuario: string;
@@ -49,8 +49,15 @@ export function ProveedorAutenticacion({ children }: PropsProveedor) {
       if (!activo) return;
 
       setUsuarioActual(usuarioFirebase);
-      setSesion(usuarioFirebase ? crearSesionDesdeFirebase(usuarioFirebase) : null);
-      setCargandoAuth(false);
+
+      if (usuarioFirebase) {
+        const perfil = await cargarOSemillarPerfil(usuarioFirebase);
+        if (activo) setSesion(perfil);
+      } else {
+        setSesion(null);
+      }
+
+      if (activo) setCargandoAuth(false);
 
       try {
         // Solo tiene efecto real si el usuario logeado es el admin (las reglas de
@@ -94,10 +101,34 @@ export function ProveedorAutenticacion({ children }: PropsProveedor) {
       return { ok: false, errores };
     }
 
+    const correo = datos.usuario.trim();
+    const sedeSeleccionada = sedesActivas.find((sede) => sede.id === datos.sedeId);
+
     try {
-      const credencial = await createUserWithEmailAndPassword(auth, datos.usuario.trim(), datos.pass.trim());
+      const credencial = await createUserWithEmailAndPassword(auth, correo, datos.pass.trim());
       await updateProfile(credencial.user, { displayName: datos.nombreCompleto.trim() });
-      setSesion(crearSesionDesdeFirebase(credencial.user, datos.sedeId));
+
+      const perfilNuevo: SesionUsuario = {
+        usuario: correo,
+        rol: 'cliente',
+        sedeId: datos.sedeId,
+        sedeNombre: sedeSeleccionada?.nombre ?? null,
+        nombreCompleto: datos.nombreCompleto.trim(),
+      };
+
+      try {
+        await crearUsuario(perfilNuevo);
+      } catch {
+        // La cuenta de Auth ya se creo pero no se pudo guardar el perfil en
+        // Firestore (reglas, sin conexion, etc.). Avisamos para que el
+        // administrador pueda revisarlo, en vez de dejar una sesion a medias.
+        return {
+          ok: false,
+          errores: { general: 'Tu cuenta se creo, pero no se pudo guardar tu perfil. Contacta al administrador.' },
+        };
+      }
+
+      setSesion(perfilNuevo);
       return { ok: true, errores: {} };
     } catch (error) {
       return { ok: false, errores: { general: traducirErrorFirebase(error) } };
@@ -145,16 +176,36 @@ export function usarAutenticacion(): ContextoAutenticacionValor {
   return contexto;
 }
 
-function crearSesionDesdeFirebase(usuario: User, sedeId: number | null = null): SesionUsuario {
-  const correo = usuario.email ?? '';
-  const rol: RolUsuario = esCorreoAdmin(correo) ? 'admin' : 'cliente';
+// Busca el perfil (rol, sedeId, nombre) del usuario logeado en Firestore.
+// Si no existe todavia -lo cual solo deberia pasar la primera vez que entra
+// el admin, ya que los clientes siempre se crean en el registro- lo siembra
+// automaticamente, igual que se hace con las sedes iniciales.
+async function cargarOSemillarPerfil(usuarioFirebase: User): Promise<SesionUsuario> {
+  const correo = usuarioFirebase.email ?? '';
 
-  return {
+  try {
+    const perfil = await obtenerPerfilUsuario(correo);
+    if (perfil) return perfil;
+  } catch {
+    // No se pudo leer (sin conexion, reglas, etc.); seguimos con el fallback.
+  }
+
+  const perfilNuevo: SesionUsuario = {
     usuario: correo,
-    rol,
-    sedeId,
-    nombreCompleto: usuario.displayName || correo,
+    rol: esCorreoAdmin(correo) ? 'admin' : 'cliente',
+    sedeId: null,
+    sedeNombre: null,
+    nombreCompleto: usuarioFirebase.displayName || correo,
   };
+
+  try {
+    await crearUsuario(perfilNuevo);
+  } catch {
+    // Sin permiso para crear su propio documento; se mantiene la sesion en
+    // memoria con el rol por defecto, aunque no quede persistida.
+  }
+
+  return perfilNuevo;
 }
 
 function esCorreoAdmin(correo: string): boolean {

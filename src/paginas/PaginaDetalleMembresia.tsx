@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
-  buscarNombreUsuario,
   nombreSedeEnLista,
+  nombreUsuarioEnLista,
   obtenerMembresias,
   obtenerSedes,
   obtenerUsuarios,
   planesMembresia,
 } from '../datos/almacenamiento';
-import { Sede } from '../tipos/modelos';
+import { Sede, Usuario } from '../tipos/modelos';
 
 function formatearPrecio(valor: number): string {
   return valor.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
@@ -20,13 +20,17 @@ export function PaginaDetalleMembresia() {
   const { sesion, esAdmin } = usarAutenticacion();
   const membresia = obtenerMembresias().find((item) => item.id === Number(id));
   const [sedes, setSedes] = useState<Sede[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   useEffect(() => {
     let activo = true;
 
     (async () => {
-      const todas = await obtenerSedes();
-      if (activo) setSedes(todas);
+      const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+      if (activo) {
+        setSedes(todasSedes);
+        setUsuarios(todosUsuarios);
+      }
     })();
 
     return () => {
@@ -49,7 +53,7 @@ export function PaginaDetalleMembresia() {
     return <Navigate to="/membresias" replace />;
   }
 
-  const usuario = obtenerUsuarios().find((item) => item.usuario === membresia.usuario);
+  const usuario = usuarios.find((item) => item.usuario === membresia.usuario);
   const plan = planesMembresia.find((item) => item.tipo === membresia.plan);
 
   return (
@@ -65,7 +69,7 @@ export function PaginaDetalleMembresia() {
       <div className="grid-dos">
         <article className="panel ficha-detalle">
           <h2>Cliente</h2>
-          <p><strong>Nombre:</strong> {buscarNombreUsuario(membresia.usuario)}</p>
+          <p><strong>Nombre:</strong> {nombreUsuarioEnLista(usuarios, membresia.usuario)}</p>
           <p><strong>Usuario:</strong> {membresia.usuario}</p>
           <p><strong>Sede:</strong> {nombreSedeEnLista(sedes, usuario?.sedeId ?? null)}</p>
         </article>

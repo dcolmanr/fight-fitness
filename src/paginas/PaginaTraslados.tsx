@@ -1,12 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
+  actualizarUsuario,
   guardarTraslados,
-  guardarUsuarios,
   nombreSedeEnLista,
   obtenerSedes,
   obtenerTraslados,
-  obtenerUsuarios,
 } from '../datos/almacenamiento';
 import { EstadoSolicitud, Sede, SolicitudTraslado } from '../tipos/modelos';
 
@@ -82,7 +81,7 @@ export function PaginaTraslados() {
     setMotivo('');
   }
 
-  function resolverSolicitud(id: number, estado: EstadoSolicitud): void {
+  async function resolverSolicitud(id: number, estado: EstadoSolicitud): Promise<void> {
     const solicitud = traslados.find((item) => item.id === id);
     if (!solicitud || estado === 'Pendiente') return;
 
@@ -91,11 +90,16 @@ export function PaginaTraslados() {
     );
 
     if (estado === 'Aprobado') {
-      const usuarios = obtenerUsuarios();
-      const actualizados = usuarios.map((usuario) =>
-        usuario.usuario === solicitud.usuario ? { ...usuario, sedeId: solicitud.sedeDestinoId } : usuario,
-      );
-      guardarUsuarios(actualizados);
+      const sedeDestino = sedes.find((sede) => sede.id === solicitud.sedeDestinoId);
+      try {
+        await actualizarUsuario(solicitud.usuario, {
+          sedeId: solicitud.sedeDestinoId,
+          sedeNombre: sedeDestino?.nombre ?? null,
+        });
+      } catch {
+        setError('No se pudo actualizar la sede del cliente en Firestore. Intenta nuevamente.');
+        return;
+      }
     }
 
     refrescarTraslados(nuevasSolicitudes);

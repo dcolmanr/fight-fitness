@@ -106,11 +106,16 @@ export function PaginaSedes() {
   async function eliminarSede(id: number): Promise<void> {
     if (!esAdmin) return;
 
-    const usuarios = obtenerUsuarios();
-    const estaEnUso = usuarios.some((usuario) => usuario.sedeId === id);
+    try {
+      const usuarios = await obtenerUsuarios();
+      const estaEnUso = usuarios.some((usuario) => usuario.sedeId === id);
 
-    if (estaEnUso) {
-      alert('No se puede eliminar una sede con clientes inscritos. Cambiala a Inactiva.');
+      if (estaEnUso) {
+        alert('No se puede eliminar una sede con clientes inscritos. Cambiala a Inactiva.');
+        return;
+      }
+    } catch {
+      alert('No se pudo verificar si la sede tiene clientes inscritos. Intenta nuevamente.');
       return;
     }
 

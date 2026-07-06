@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { obtenerSedes, obtenerUsuarios } from '../datos/almacenamiento';
-import { Sede } from '../tipos/modelos';
+import { Sede, Usuario } from '../tipos/modelos';
 
 export function PaginaDetalleSede() {
   const { id } = useParams<{ id: string }>();
   const sedeId = Number(id);
   const [sede, setSede] = useState<Sede | null | undefined>(undefined);
-  const usuarios = obtenerUsuarios().filter((usuario) => usuario.sedeId === sedeId);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
   useEffect(() => {
     let activo = true;
 
     (async () => {
-      const todas = await obtenerSedes();
-      if (activo) setSede(todas.find((item) => item.id === sedeId) ?? null);
+      const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+      if (activo) {
+        setSede(todasSedes.find((item) => item.id === sedeId) ?? null);
+        setUsuarios(todosUsuarios.filter((usuario) => usuario.sedeId === sedeId));
+      }
     })();
 
     return () => {

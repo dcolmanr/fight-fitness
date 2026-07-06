@@ -14,10 +14,17 @@ export interface Sede {
 }
 
 export interface Usuario {
-  usuario: string;
-  pass: string;
+  usuario: string; // correo; tambien es el id del documento en Firestore
   rol: RolUsuario;
   sedeId: number | null;
+  // Copia del nombre de la sede al momento de asignarla. Es solo cosmetico,
+  // para que se entienda de un vistazo en la consola de Firestore sin tener
+  // que cruzar con la coleccion de sedes. La app NUNCA debe usar este campo
+  // para logica ni para mostrarlo en pantalla: siempre usa
+  // nombreSedeEnLista(sedes, sedeId), que sale de la sede real y actual.
+  // Si el admin renombra una sede, esta copia queda desactualizada en los
+  // usuarios ya asignados (no hay sincronizacion automatica retroactiva).
+  sedeNombre: string | null;
   nombreCompleto: string;
 }
 
@@ -25,6 +32,7 @@ export interface SesionUsuario {
   usuario: string;
   rol: RolUsuario;
   sedeId: number | null;
+  sedeNombre: string | null;
   nombreCompleto: string;
 }
 
