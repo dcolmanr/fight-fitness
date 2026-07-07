@@ -4,8 +4,8 @@ import { Membresia, PlanMembresia, Sede, SolicitudTraslado, Usuario } from '../t
 
 const COLECCION_SEDES = 'sedes';
 const COLECCION_USUARIOS = 'usuarios';
+const COLECCION_MEMBRESIAS = 'membresias';
 const CLAVE_TRASLADOS = 'solicitudesTraslado';
-const CLAVE_MEMBRESIAS = 'membresias';
 
 const sedesIniciales: Sede[] = [
   {
@@ -84,10 +84,6 @@ export async function prepararDatosIniciales(): Promise<void> {
   if (!localStorage.getItem(CLAVE_TRASLADOS)) {
     escribirJson(CLAVE_TRASLADOS, []);
   }
-
-  if (!localStorage.getItem(CLAVE_MEMBRESIAS)) {
-    escribirJson(CLAVE_MEMBRESIAS, []);
-  }
 }
 
 export async function obtenerSedes(): Promise<Sede[]> {
@@ -138,12 +134,38 @@ export function guardarTraslados(traslados: SolicitudTraslado[]): void {
   escribirJson(CLAVE_TRASLADOS, traslados);
 }
 
-export function obtenerMembresias(): Membresia[] {
-  return leerJson<Membresia[]>(CLAVE_MEMBRESIAS, []);
+// El id del documento es el correo del cliente (una membresia "vigente" por
+// cliente, igual que su perfil en 'usuarios'). Al cambiar de plan se
+// sobreescribe con setDoc; el historial de vigencias anteriores no se guarda.
+export async function obtenerMembresias(): Promise<Membresia[]> {
+  const snapshot = await getDocs(collection(db, COLECCION_MEMBRESIAS));
+  return snapshot.docs.map((documento) => documento.data() as Membresia);
 }
 
-export function guardarMembresias(membresias: Membresia[]): void {
-  escribirJson(CLAVE_MEMBRESIAS, membresias);
+export async function obtenerMembresiaUsuario(correo: string): Promise<Membresia | null> {
+  const snapshot = await getDoc(doc(db, COLECCION_MEMBRESIAS, correo));
+  return snapshot.exists() ? (snapshot.data() as Membresia) : null;
+}
+
+export async function guardarMembresia(
+  correo: string,
+  datos: Omit<Membresia, 'id' | 'usuario'>,
+): Promise<Membresia> {
+  const existente = await obtenerMembresiaUsuario(correo);
+  const membresia: Membresia = { id: existente?.id ?? Date.now(), usuario: correo, ...datos };
+  await setDoc(doc(db, COLECCION_MEMBRESIAS, correo), membresia);
+  return membresia;
+}
+
+export async function actualizarMembresia(
+  correo: string,
+  datos: Partial<Omit<Membresia, 'id' | 'usuario'>>,
+): Promise<void> {
+  await updateDoc(doc(db, COLECCION_MEMBRESIAS, correo), datos);
+}
+
+export async function eliminarMembresia(correo: string): Promise<void> {
+  await deleteDoc(doc(db, COLECCION_MEMBRESIAS, correo));
 }
 
 export function nombreSedeEnLista(sedes: Sede[], sedeId: number | null): string {

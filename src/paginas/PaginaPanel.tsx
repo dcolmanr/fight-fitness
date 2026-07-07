@@ -8,14 +8,14 @@ import {
   obtenerTraslados,
   obtenerUsuarios,
 } from '../datos/almacenamiento';
-import { Sede, Usuario } from '../tipos/modelos';
+import { Membresia, Sede, Usuario } from '../tipos/modelos';
 
 export function PaginaPanel() {
   const { sesion, esAdmin } = usarAutenticacion();
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [membresias, setMembresias] = useState<Membresia[]>([]);
   const traslados = obtenerTraslados();
-  const membresias = obtenerMembresias();
   const pendientes = traslados.filter((solicitud) => solicitud.estado === 'Pendiente').length;
   const activas = membresias.filter((membresia) => membresia.estado === 'Activa').length;
 
@@ -23,10 +23,15 @@ export function PaginaPanel() {
     let activo = true;
 
     (async () => {
-      const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+      const [todasSedes, todosUsuarios, todasMembresias] = await Promise.all([
+        obtenerSedes(),
+        obtenerUsuarios(),
+        obtenerMembresias(),
+      ]);
       if (activo) {
         setSedes(todasSedes);
         setUsuarios(todosUsuarios);
+        setMembresias(todasMembresias);
       }
     })();
 

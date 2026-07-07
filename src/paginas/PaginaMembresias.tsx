@@ -1,91 +1,276 @@
-import { useState, useEffect } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
+import {
+  actualizarMembresia,
+  eliminarMembresia,
+  guardarMembresia,
+  nombreSedeEnLista,
+  nombreUsuarioEnLista,
+  obtenerMembresiaUsuario,
+  obtenerMembresias,
+  obtenerSedes,
+  obtenerUsuarios,
+  planesMembresia,
+} from '../datos/almacenamiento';
+import { EstadoMembresia, Membresia, Sede, TipoPlanMembresia, Usuario } from '../tipos/modelos';
+
+const duracionesDisponibles = [3, 6, 12];
+
+function formatearPrecio(valor: number): string {
+  return valor.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+}
+
+function calcularFechaTermino(meses: number): string {
+  const inicio = new Date();
+  const termino = new Date(inicio);
+  termino.setMonth(termino.getMonth() + meses);
+  return termino.toLocaleDateString('es-CL');
+}
+
+function hoyFormateado(): string {
+  return new Date().toLocaleDateString('es-CL');
+}
 
 const PaginaMembresias = () => {
   const { sesion, usuarioActual, esAdmin } = usarAutenticacion();
-  
-  // Estados para el flujo del cliente
-  const [planElegido, setPlanElegido] = useState<string | null>(null);
+
+  const [sedes, setSedes] = useState<Sede[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [mensaje, setMensaje] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+
+  // Cliente
+  const [membresiaActual, setMembresiaActual] = useState<Membresia | null>(null);
+  const [planElegido, setPlanElegido] = useState<TipoPlanMembresia | null>(null);
   const [meses, setMeses] = useState<number>(3);
   const [metodoPago, setMetodoPago] = useState<string>('Webpay');
-  const [estadoActual, setEstadoActual] = useState<string>('Sin membresía');
-  const [mensaje, setMensaje] = useState<string>('');
+  const [errorCarga, setErrorCarga] = useState('');
 
-  // Precios base por mes
-  const precios: Record<string, number> = {
-    'Básica': 20000,
-    'Pro': 30000,
-    'Plan Full': 45000
-  };
+  // Admin
+  const [membresias, setMembresias] = useState<Membresia[]>([]);
 
-  // Cargar el estado real de la membresía del cliente desde Firestore
   useEffect(() => {
-    const cargarEstadoMembresia = async () => {
-      if (!esAdmin && usuarioActual) {
-        try {
-          const docRef = doc(db, 'usuarios', usuarioActual.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const datos = docSnap.data();
-            if (datos.estadoMembresia) {
-              setEstadoActual(datos.estadoMembresia);
-            }
-          }
-        } catch (error) {
-          console.error("Error al cargar estado:", error);
+    let activo = true;
+    (async () => {
+      setCargando(true);
+      setErrorCarga('');
+      try {
+        const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+        if (!activo) return;
+        setSedes(todasSedes);
+        setUsuarios(todosUsuarios);
+
+        if (esAdmin) {
+          const todasMembresias = await obtenerMembresias();
+          if (activo) setMembresias(todasMembresias);
+        } else if (sesion) {
+          const propia = await obtenerMembresiaUsuario(sesion.usuario);
+          if (activo) setMembresiaActual(propia);
         }
+      } catch (error) {
+        console.error('Error cargando membresias:', error);
+        if (activo) {
+          setErrorCarga(
+            error instanceof Error ? error.message : 'No se pudieron cargar los datos desde Firestore.',
+          );
+        }
+      } finally {
+        if (activo) setCargando(false);
       }
+    })();
+    return () => {
+      activo = false;
     };
-    cargarEstadoMembresia();
-  }, [esAdmin, usuarioActual]);
+  }, [esAdmin, sesion, usuarioActual]);
 
-  const calcularPrecio = () => {
+  const membresiasFiltradas = useMemo(() => {
+    const texto = busqueda.toLowerCase();
+    return membresias.filter((membresia) =>
+      [
+        nombreUsuarioEnLista(usuarios, membresia.usuario),
+        membresia.plan,
+        membresia.estado,
+        membresia.metodoPago,
+      ].some((valor) => valor.toLowerCase().includes(texto)),
+    );
+  }, [busqueda, membresias, usuarios]);
+
+  function calcularPrecio(): number {
     if (!planElegido) return 0;
-    return precios[planElegido] * meses;
-  };
+    const plan = planesMembresia.find((item) => item.tipo === planElegido);
+    return (plan?.precioMensual ?? 0) * meses;
+  }
 
-  const confirmarCompra = async () => {
-    if (!planElegido || !usuarioActual) return;
-    
+  async function confirmarCompra(): Promise<void> {
+    if (!planElegido || !sesion) return;
+    const plan = planesMembresia.find((item) => item.tipo === planElegido);
+    if (!plan) return;
+
     try {
-      const usuarioRef = doc(db, 'usuarios', usuarioActual.uid);
-      await updateDoc(usuarioRef, {
-        membresia: planElegido,
-        duracionMeses: meses,
-        metodoPago: metodoPago,
-        precioTotal: calcularPrecio(),
-        estadoMembresia: 'Pendiente' // Queda pendiente hasta que el admin lo apruebe
+      const nueva = await guardarMembresia(sesion.usuario, {
+        plan: planElegido,
+        precioMensual: plan.precioMensual,
+        fechaInicio: hoyFormateado(),
+        fechaTermino: calcularFechaTermino(meses),
+        estado: 'Pendiente',
+        metodoPago,
+        observacion: '',
       });
+      setMembresiaActual(nueva);
       setMensaje('¡Solicitud enviada con éxito! Esperando aprobación del administrador.');
-      setPlanElegido(null); // Ocultar el formulario
-      setEstadoActual('Pendiente'); // Actualizar la vista localmente
+      setPlanElegido(null);
     } catch (error) {
-      console.error("Error al confirmar:", error);
-      setMensaje('Error al procesar la solicitud.');
+      setMensaje('No se pudo guardar la solicitud en Firestore. Intenta nuevamente.');
     }
-  };
+  }
 
-  const cancelarCompra = () => {
+  function cancelarCompra(): void {
     setPlanElegido(null);
     setMensaje('');
-  };
+  }
+
+  async function cambiarEstado(membresia: Membresia, estado: EstadoMembresia): Promise<void> {
+    try {
+      await actualizarMembresia(membresia.usuario, { estado });
+      setMembresias((actual) =>
+        actual.map((item) => (item.usuario === membresia.usuario ? { ...item, estado } : item)),
+      );
+    } catch (error) {
+      alert('No se pudo actualizar el estado en Firestore. Intenta nuevamente.');
+    }
+  }
+
+  async function eliminarMembresiaAdmin(membresia: Membresia): Promise<void> {
+    const mensajeConfirmacion =
+      membresia.estado === 'Pendiente'
+        ? 'Seguro que deseas rechazar esta solicitud de membresia? Se eliminara.'
+        : 'Seguro que deseas eliminar esta membresia? Se borrara de Firestore.';
+
+    if (!confirm(mensajeConfirmacion)) return;
+
+    try {
+      await eliminarMembresia(membresia.usuario);
+      setMembresias((actual) => actual.filter((item) => item.usuario !== membresia.usuario));
+    } catch (error) {
+      alert('No se pudo eliminar la membresia en Firestore. Intenta nuevamente.');
+    }
+  }
+
+  if (cargando) {
+    return (
+      <section className="pagina">
+        <div className="panel">
+          <h1>Cargando membresias...</h1>
+        </div>
+      </section>
+    );
+  }
+
+  if (errorCarga) {
+    return (
+      <section className="pagina">
+        <div className="panel">
+          <h1>No se pudieron cargar las membresias</h1>
+          <p className="mensaje-error">{errorCarga}</p>
+          <p>Revisa la consola del navegador (F12) para más detalle, y confirma que las reglas de Firestore permiten leer la coleccion "membresias" para usuarios autenticados.</p>
+        </div>
+      </section>
+    );
+  }
 
   // ==========================================
   // VISTA DEL ADMINISTRADOR
   // ==========================================
   if (esAdmin) {
     return (
-      <div style={{ padding: '20px' }}>
-        <h2>Panel de Administración de Membresías</h2>
-        <p>Busca, filtra y aprueba a los clientes aquí.</p>
-        
-        {/* Aquí puedes pegar el código de la tabla de tu PanelAdmin que te di antes */}
-        <div style={{ padding: '20px', border: '1px solid #ccc', backgroundColor: '#f9f9f9' }}>
-          <p><em>(Espacio reservado para la tabla de gestión de clientes, filtros y aprobaciones)</em></p>
+      <section className="pagina">
+        <div className="encabezado-pagina">
+          <div>
+            <h1>Gestion de Membresias</h1>
+            <p>Revise, apruebe o suspenda las membresias solicitadas por los clientes.</p>
+          </div>
         </div>
-      </div>
+
+        <div className="grid-planes">
+          {planesMembresia.map((plan) => (
+            <article key={plan.tipo} className="plan-card">
+              <h2>Plan {plan.tipo}</h2>
+              <strong>{formatearPrecio(plan.precioMensual)}</strong>
+              <p>{plan.clasesSemanales}</p>
+              <p>
+                {plan.disciplinasIncluidas === 6 ? 'Acceso total' : `${plan.disciplinasIncluidas} disciplina(s)`}
+              </p>
+              <span>{plan.preparacionFisica ? 'Incluye preparacion fisica' : 'Sin preparacion fisica'}</span>
+            </article>
+          ))}
+        </div>
+
+        <div className="panel">
+          <h2>Membresias de clientes</h2>
+          <label className="busqueda">
+            Buscar
+            <input
+              value={busqueda}
+              onChange={(evento) => setBusqueda(evento.target.value)}
+              placeholder="Filtrar por cliente, plan, estado o pago"
+            />
+          </label>
+
+          <div className="tabla-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Plan</th>
+                  <th>Vigencia</th>
+                  <th>Estado</th>
+                  <th>Pago</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {membresiasFiltradas.length === 0 && (
+                  <tr>
+                    <td colSpan={6}>No hay membresias registradas.</td>
+                  </tr>
+                )}
+                {membresiasFiltradas.map((membresia) => (
+                  <tr key={membresia.id}>
+                    <td>
+                      <strong>{nombreUsuarioEnLista(usuarios, membresia.usuario)}</strong>
+                      <span>{membresia.usuario}</span>
+                    </td>
+                    <td>{membresia.plan}</td>
+                    <td>{membresia.fechaInicio} al {membresia.fechaTermino}</td>
+                    <td><span className={`estado ${membresia.estado.toLowerCase()}`}>{membresia.estado}</span></td>
+                    <td>{membresia.metodoPago}</td>
+                    <td className="acciones-tabla">
+                      <Link to={`/membresias/${membresia.id}`}>Detalle</Link>
+                      {membresia.estado === 'Pendiente' && (
+                        <>
+                          <button type="button" onClick={() => cambiarEstado(membresia, 'Activa')}>Aprobar</button>
+                          <button type="button" onClick={() => eliminarMembresiaAdmin(membresia)}>Rechazar</button>
+                        </>
+                      )}
+                      {membresia.estado === 'Activa' && (
+                        <button type="button" onClick={() => cambiarEstado(membresia, 'Suspendida')}>Suspender</button>
+                      )}
+                      {membresia.estado === 'Suspendida' && (
+                        <button type="button" onClick={() => cambiarEstado(membresia, 'Activa')}>Reactivar</button>
+                      )}
+                      {membresia.estado !== 'Pendiente' && (
+                        <button type="button" onClick={() => eliminarMembresiaAdmin(membresia)}>Eliminar</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -93,105 +278,108 @@ const PaginaMembresias = () => {
   // VISTA DEL CLIENTE
   // ==========================================
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Mis Membresías</h2>
-      
-      {/* Banner de Estado Actual */}
-      <div style={{ 
-        padding: '15px', 
-        marginBottom: '20px', 
-        borderRadius: '5px',
-        backgroundColor: estadoActual === 'Aprobada' ? '#d4edda' : 
-                         estadoActual === 'Suspendida' ? '#f8d7da' : '#fff3cd',
-        border: '1px solid #ccc'
-      }}>
-        <strong>Estado de tu membresía: </strong> 
-        <span style={{ textTransform: 'uppercase' }}>{estadoActual}</span>
+    <section className="pagina">
+      <div className="encabezado-pagina">
+        <div>
+          <h1>Mis Membresias</h1>
+          <p>Elija su plan, revise su estado y confirme el pago de su membresia.</p>
+        </div>
       </div>
 
-      {mensaje && <p style={{ color: 'green', fontWeight: 'bold' }}>{mensaje}</p>}
+      <div
+        className="banner-estado"
+        style={{
+          backgroundColor:
+            membresiaActual?.estado === 'Activa'
+              ? '#e6f4ea'
+              : membresiaActual?.estado === 'Suspendida'
+              ? '#fce8e6'
+              : '#fff6e0',
+        }}
+      >
+        <strong>Estado de tu membresía: </strong>
+        <span>{membresiaActual?.estado ?? 'Sin membresía'}</span>
+        {membresiaActual && (
+          <p>
+            Plan {membresiaActual.plan} · Vigencia {membresiaActual.fechaInicio} al {membresiaActual.fechaTermino}
+          </p>
+        )}
+      </div>
 
-      <h3>Elige un nuevo plan</h3>
-      <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
-        {Object.keys(precios).map((plan) => (
-          <div 
-            key={plan} 
-            onClick={() => { setPlanElegido(plan); setMensaje(''); }}
-            style={{ 
-              border: planElegido === plan ? '3px solid #007bff' : '1px solid #ccc',
-              padding: '20px', 
-              cursor: 'pointer', 
-              borderRadius: '8px',
-              width: '200px',
-              textAlign: 'center',
-              backgroundColor: planElegido === plan ? '#e9f5ff' : '#fff'
+      {mensaje && <p className="mensaje-exito">{mensaje}</p>}
+
+      <h2>Elige un nuevo plan</h2>
+      <div className="grid-planes">
+        {planesMembresia.map((plan) => (
+          <button
+            key={plan.tipo}
+            type="button"
+            className={`plan-card seleccionable ${planElegido === plan.tipo ? 'seleccionada' : ''}`}
+            onClick={() => {
+              setPlanElegido(plan.tipo);
+              setMensaje('');
             }}
           >
-            <h4 style={{ margin: '0 0 10px 0' }}>{plan}</h4>
-            <p style={{ margin: '0' }}>${precios[plan].toLocaleString('es-CL')} / mes</p>
-          </div>
+            <h2>Plan {plan.tipo}</h2>
+            <strong>{formatearPrecio(plan.precioMensual)} / mes</strong>
+            <p>{plan.clasesSemanales}</p>
+            <p>
+              {plan.disciplinasIncluidas === 6 ? 'Acceso total' : `${plan.disciplinasIncluidas} disciplina(s)`}
+            </p>
+            <span>{plan.preparacionFisica ? 'Incluye preparacion fisica' : 'Sin preparacion fisica'}</span>
+          </button>
         ))}
       </div>
 
-      {/* BLOQUE DE CONFIRMACIÓN (Solo aparece si selecciona un plan) */}
       {planElegido && (
-        <div style={{ border: '2px solid #333', padding: '20px', borderRadius: '8px', maxWidth: '500px', backgroundColor: '#fdfdfd' }}>
-          <h3>Confirmar Adquisición: {planElegido}</h3>
-          
-          <div style={{ marginBottom: '15px' }}>
-            <label><strong>Cliente:</strong></label>
-            <input type="text" value={sesion?.nombreCompleto || ''} readOnly disabled style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
+        <div className="panel formulario formulario-centrado">
+          <h2>Confirmar adquisicion: {planElegido}</h2>
+
+          <label>
+            Cliente
+            <input type="text" value={sesion?.nombreCompleto || ''} readOnly disabled />
+          </label>
+
+          <label>
+            Sede de entrenamiento
+            <input type="text" value={nombreSedeEnLista(sedes, sesion?.sedeId ?? null)} readOnly disabled />
+          </label>
+
+          <label>Duracion del plan</label>
+          <div className="opciones-duracion">
+            {duracionesDisponibles.map((opcion) => (
+              <button
+                key={opcion}
+                type="button"
+                className={meses === opcion ? 'seleccionada' : ''}
+                onClick={() => setMeses(opcion)}
+              >
+                {opcion} {opcion === 1 ? 'mes' : 'meses'}
+              </button>
+            ))}
           </div>
 
-          <div style={{ marginBottom: '15px' }}>
-            <label><strong>Sede de Entrenamiento:</strong></label>
-            {/* Si guardas el ID de la sede en vez del nombre, aquí mostrará el ID. Puedes ajustar esto luego */}
-            <input type="text" value={`Sede ID: ${sesion?.sedeId || 'No asignada'}`} readOnly disabled style={{ width: '100%', padding: '8px', marginTop: '5px' }} />
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label><strong>Duración del Plan:</strong></label>
-            <select 
-              value={meses} 
-              onChange={(e) => setMeses(Number(e.target.value))} 
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            >
-              <option value={3}>3 Meses</option>
-              <option value={6}>6 Meses</option>
-              <option value={12}>12 Meses (1 Año)</option>
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label><strong>Método de Pago:</strong></label>
-            <select 
-              value={metodoPago} 
-              onChange={(e) => setMetodoPago(e.target.value)} 
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-            >
+          <label>
+            Metodo de pago
+            <select value={metodoPago} onChange={(evento) => setMetodoPago(evento.target.value)}>
               <option value="Webpay">Webpay (Tarjetas)</option>
               <option value="Débito">Tarjeta de Débito</option>
               <option value="Crédito">Tarjeta de Crédito</option>
               <option value="Transferencia">Transferencia Bancaria</option>
             </select>
-          </div>
+          </label>
 
-          <div style={{ margin: '20px 0', fontSize: '1.2rem' }}>
-            <strong>Precio Total a Pagar: </strong> 
-            <span style={{ color: '#007bff' }}>${calcularPrecio().toLocaleString('es-CL')}</span>
-          </div>
+          <p className="precio-total">
+            <strong>Precio total a pagar: {formatearPrecio(calcularPrecio())}</strong>
+          </p>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={confirmarCompra} style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-              Confirmar
-            </button>
-            <button onClick={cancelarCompra} style={{ padding: '10px 20px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-              Rechazar (Cancelar)
-            </button>
+          <div className="fila-botones">
+            <button type="button" onClick={confirmarCompra}>Confirmar</button>
+            <button type="button" className="boton-secundario" onClick={cancelarCompra}>Rechazar (Cancelar)</button>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 

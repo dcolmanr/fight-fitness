@@ -271,10 +271,16 @@ button:hover {
   border-radius: 8px;
   padding: 18px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+  color: var(--texto-general);
+}
+
+.plan-card.seleccionable:hover {
+  background: var(--blanco);
 }
 
 .plan-card h2 {
   margin: 0 0 10px;
+  color: var(--texto-general);
 }
 
 .plan-card strong {
@@ -405,6 +411,69 @@ td span {
 .lista-simple span {
   display: block;
   color: #666666;
+}
+
+.plan-card.seleccionable {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.plan-card.seleccionada {
+  border-color: var(--rojo-gym);
+  box-shadow: 0 0 0 2px var(--rojo-gym);
+}
+
+.formulario-centrado {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.opciones-duracion {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.opciones-duracion button {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--texto-general);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.opciones-duracion button:hover {
+  background: #f0f0f0;
+}
+
+.opciones-duracion button.seleccionada,
+.opciones-duracion button.seleccionada:hover {
+  border-color: var(--rojo-gym);
+  background: var(--rojo-gym);
+  color: var(--blanco);
+}
+
+.precio-total {
+  font-size: 1.2rem;
+  margin: 18px 0;
+}
+
+.precio-total strong {
+  color: var(--rojo-gym);
+}
+
+.banner-estado {
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
 }
 
 @media (max-width: 860px) {

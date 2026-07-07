@@ -9,7 +9,7 @@ import {
   obtenerUsuarios,
   planesMembresia,
 } from '../datos/almacenamiento';
-import { Sede, Usuario } from '../tipos/modelos';
+import { Membresia, Sede, Usuario } from '../tipos/modelos';
 
 function formatearPrecio(valor: number): string {
   return valor.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
@@ -18,7 +18,7 @@ function formatearPrecio(valor: number): string {
 export function PaginaDetalleMembresia() {
   const { id } = useParams<{ id: string }>();
   const { sesion, esAdmin } = usarAutenticacion();
-  const membresia = obtenerMembresias().find((item) => item.id === Number(id));
+  const [membresia, setMembresia] = useState<Membresia | null | undefined>(undefined);
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
@@ -26,17 +26,32 @@ export function PaginaDetalleMembresia() {
     let activo = true;
 
     (async () => {
-      const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+      const [todasSedes, todosUsuarios, todasMembresias] = await Promise.all([
+        obtenerSedes(),
+        obtenerUsuarios(),
+        obtenerMembresias(),
+      ]);
       if (activo) {
         setSedes(todasSedes);
         setUsuarios(todosUsuarios);
+        setMembresia(todasMembresias.find((item) => item.id === Number(id)) ?? null);
       }
     })();
 
     return () => {
       activo = false;
     };
-  }, []);
+  }, [id]);
+
+  if (membresia === undefined) {
+    return (
+      <section className="pagina">
+        <div className="panel">
+          <h1>Cargando membresia...</h1>
+        </div>
+      </section>
+    );
+  }
 
   if (!membresia) {
     return (
