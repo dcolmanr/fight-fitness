@@ -469,6 +469,37 @@ td span {
   color: var(--rojo-gym);
 }
 
+.opciones-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.opciones-toggle button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+  background: var(--blanco);
+  color: var(--texto-general);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.opciones-toggle button:hover {
+  background: #f0f0f0;
+}
+
+.opciones-toggle button.seleccionada,
+.opciones-toggle button.seleccionada:hover {
+  border-color: var(--rojo-gym);
+  background: var(--rojo-gym);
+  color: var(--blanco);
+}
+
+.formulario-horizontal .opciones-toggle {
+  margin-bottom: 4px;
+}
+
 .banner-estado {
   padding: 15px;
   margin-bottom: 20px;

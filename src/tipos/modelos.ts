@@ -65,10 +65,15 @@ export interface Membresia {
   metodoPago: string;
   observacion: string;
 }
+export type DiaSemana = 'Lunes' | 'Martes' | 'Miercoles' | 'Jueves' | 'Viernes' | 'Sabado' | 'Domingo';
+export type BloqueHorario = 'Mañana' | 'Tarde' | 'Noche';
+
 export interface AgendaEntrenamiento {
   id: string;
   usuario: string;
-  horario: string;
+  dias: DiaSemana[];
+  bloque: BloqueHorario;
+  observacion: string;
   estado: EstadoSolicitud;
   creadoEn?: unknown;
 }
