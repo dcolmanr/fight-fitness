@@ -142,13 +142,17 @@ const PaginaMembresias = () => {
     }
   }
 
-  async function eliminarMembresiaAdmin(membresia: Membresia): Promise<void> {
-    const mensajeConfirmacion =
-      membresia.estado === 'Pendiente'
-        ? 'Seguro que deseas rechazar esta solicitud de membresia? Se eliminara.'
-        : 'Seguro que deseas eliminar esta membresia? Se borrara de Firestore.';
+  // Igual que en solicitudesTraslado: rechazar NO borra el documento, solo
+  // le cambia el estado. Asi queda registro en Firestore de que la
+  // solicitud fue rechazada (con la posibilidad de agregar una
+  // observacion), en vez de desaparecer sin dejar rastro.
+  async function rechazarSolicitud(membresia: Membresia): Promise<void> {
+    if (!confirm('Seguro que deseas rechazar esta solicitud de membresia?')) return;
+    await cambiarEstado(membresia, 'Rechazada');
+  }
 
-    if (!confirm(mensajeConfirmacion)) return;
+  async function eliminarMembresiaAdmin(membresia: Membresia): Promise<void> {
+    if (!confirm('Seguro que deseas eliminar esta membresia? Se borrara de Firestore.')) return;
 
     try {
       await eliminarMembresia(membresia.usuario);
@@ -251,7 +255,7 @@ const PaginaMembresias = () => {
                       {membresia.estado === 'Pendiente' && (
                         <>
                           <button type="button" onClick={() => cambiarEstado(membresia, 'Activa')}>Aprobar</button>
-                          <button type="button" onClick={() => eliminarMembresiaAdmin(membresia)}>Rechazar</button>
+                          <button type="button" onClick={() => rechazarSolicitud(membresia)}>Rechazar</button>
                         </>
                       )}
                       {membresia.estado === 'Activa' && (
@@ -292,7 +296,7 @@ const PaginaMembresias = () => {
           backgroundColor:
             membresiaActual?.estado === 'Activa'
               ? '#e6f4ea'
-              : membresiaActual?.estado === 'Suspendida'
+              : membresiaActual?.estado === 'Suspendida' || membresiaActual?.estado === 'Rechazada'
               ? '#fce8e6'
               : '#fff6e0',
         }}

@@ -2,7 +2,7 @@ export type RolUsuario = 'admin' | 'cliente';
 export type EstadoSede = 'Activa' | 'Inactiva';
 export type EstadoSolicitud = 'Pendiente' | 'Aprobado' | 'Rechazado';
 export type TipoPlanMembresia = 'Basico' | 'Pro' | 'Full';
-export type EstadoMembresia = 'Activa' | 'Pendiente' | 'Suspendida' | 'Vencida';
+export type EstadoMembresia = 'Activa' | 'Pendiente' | 'Suspendida' | 'Vencida' | 'Rechazada';
 
 export interface Sede {
   id: number;

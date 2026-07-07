@@ -356,6 +356,7 @@ td span {
 
 .estado.inactiva,
 .estado.rechazado,
+.estado.rechazada,
 .estado.suspendida,
 .estado.vencida {
   background: var(--rojo-gym);
