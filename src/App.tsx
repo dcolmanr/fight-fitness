@@ -6,7 +6,7 @@ import { PaginaSedes } from './paginas/PaginaSedes';
 import { PaginaDetalleSede } from './paginas/PaginaDetalleSede';
 import { PaginaTraslados } from './paginas/PaginaTraslados';
 import { PaginaAgendas } from './paginas/PaginaAgendas';
-import { PaginaMembresias } from './paginas/PaginaMembresias';
+import PaginaMembresias from './paginas/PaginaMembresias';
 import { PaginaDetalleMembresia } from './paginas/PaginaDetalleMembresia';
 
 export function App() {
