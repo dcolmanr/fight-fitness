@@ -2,10 +2,12 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
   actualizarUsuario,
-  guardarTraslados,
+  actualizarTraslado,
+  crearTraslado,
   nombreSedeEnLista,
   obtenerSedes,
   obtenerTraslados,
+  obtenerTrasladosPropios,
 } from '../datos/almacenamiento';
 import { EstadoSolicitud, Sede, SolicitudTraslado } from '../tipos/modelos';
 
@@ -13,6 +15,8 @@ export function PaginaTraslados() {
   const { sesion, esAdmin } = usarAutenticacion();
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [traslados, setTraslados] = useState<SolicitudTraslado[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState('');
   const [sedeDestinoId, setSedeDestinoId] = useState('');
   const [motivo, setMotivo] = useState('');
   const [error, setError] = useState('');
@@ -21,16 +25,33 @@ export function PaginaTraslados() {
     let activo = true;
 
     (async () => {
-      const todas = await obtenerSedes();
-      if (activo) setSedes(todas);
-    })();
+      setCargando(true);
+      setErrorCarga('');
 
-    setTraslados(obtenerTraslados());
+      try {
+        const todasSedes = await obtenerSedes();
+        if (!activo) return;
+        setSedes(todasSedes);
+
+        if (!sesion) return;
+
+        const todosTraslados = esAdmin
+          ? await obtenerTraslados()
+          : await obtenerTrasladosPropios(sesion.usuario);
+
+        if (activo) setTraslados(todosTraslados);
+      } catch (error) {
+        console.error('Error cargando traslados:', error);
+        if (activo) setErrorCarga('No se pudieron cargar las solicitudes desde Firestore.');
+      } finally {
+        if (activo) setCargando(false);
+      }
+    })();
 
     return () => {
       activo = false;
     };
-  }, []);
+  }, [esAdmin, sesion]);
 
   const sedesDestino = useMemo(
     () => sedes.filter((sede) => sede.estado === 'Activa' && sede.id !== sesion?.sedeId),
@@ -41,12 +62,7 @@ export function PaginaTraslados() {
     ? traslados
     : traslados.filter((solicitud) => solicitud.usuario === sesion?.usuario);
 
-  function refrescarTraslados(nuevosTraslados: SolicitudTraslado[]): void {
-    guardarTraslados(nuevosTraslados);
-    setTraslados(nuevosTraslados);
-  }
-
-  function enviarSolicitud(evento: FormEvent<HTMLFormElement>): void {
+  async function enviarSolicitud(evento: FormEvent<HTMLFormElement>): Promise<void> {
     evento.preventDefault();
     setError('');
 
@@ -66,28 +82,27 @@ export function PaginaTraslados() {
       return;
     }
 
-    const nuevaSolicitud: SolicitudTraslado = {
-      id: Date.now(),
-      usuario: sesion.usuario,
-      sedeOrigenId: sesion.sedeId,
-      sedeDestinoId: Number(sedeDestinoId),
-      motivo: motivo.trim(),
-      estado: 'Pendiente',
-      fecha: new Date().toISOString(),
-    };
+    try {
+      const nuevaSolicitud = await crearTraslado({
+        usuario: sesion.usuario,
+        sedeOrigenId: sesion.sedeId,
+        sedeDestinoId: Number(sedeDestinoId),
+        motivo: motivo.trim(),
+        estado: 'Pendiente',
+        fecha: new Date().toISOString(),
+      });
 
-    refrescarTraslados([...traslados, nuevaSolicitud]);
-    setSedeDestinoId('');
-    setMotivo('');
+      setTraslados((actual) => [...actual, nuevaSolicitud]);
+      setSedeDestinoId('');
+      setMotivo('');
+    } catch {
+      setError('No se pudo guardar la solicitud en Firestore. Intenta nuevamente.');
+    }
   }
 
   async function resolverSolicitud(id: number, estado: EstadoSolicitud): Promise<void> {
     const solicitud = traslados.find((item) => item.id === id);
     if (!solicitud || estado === 'Pendiente') return;
-
-    const nuevasSolicitudes = traslados.map((item) =>
-      item.id === id ? { ...item, estado } : item,
-    );
 
     if (estado === 'Aprobado') {
       const sedeDestino = sedes.find((sede) => sede.id === solicitud.sedeDestinoId);
@@ -102,7 +117,33 @@ export function PaginaTraslados() {
       }
     }
 
-    refrescarTraslados(nuevasSolicitudes);
+    try {
+      await actualizarTraslado(id, { estado });
+      setTraslados((actual) => actual.map((item) => (item.id === id ? { ...item, estado } : item)));
+    } catch {
+      setError('No se pudo actualizar la solicitud en Firestore. Intenta nuevamente.');
+    }
+  }
+
+  if (cargando) {
+    return (
+      <section className="pagina">
+        <div className="panel">
+          <h1>Cargando solicitudes de traslado...</h1>
+        </div>
+      </section>
+    );
+  }
+
+  if (errorCarga) {
+    return (
+      <section className="pagina">
+        <div className="panel">
+          <h1>No se pudieron cargar las solicitudes</h1>
+          <p className="mensaje-error">{errorCarga}</p>
+        </div>
+      </section>
+    );
   }
 
   return (

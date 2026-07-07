@@ -5,6 +5,7 @@ import {
   nombreSedeEnLista,
   nombreUsuarioEnLista,
   obtenerMembresias,
+  obtenerMembresiaUsuario,
   obtenerSedes,
   obtenerUsuarios,
   planesMembresia,
@@ -26,22 +27,30 @@ export function PaginaDetalleMembresia() {
     let activo = true;
 
     (async () => {
-      const [todasSedes, todosUsuarios, todasMembresias] = await Promise.all([
-        obtenerSedes(),
-        obtenerUsuarios(),
-        obtenerMembresias(),
-      ]);
-      if (activo) {
-        setSedes(todasSedes);
-        setUsuarios(todosUsuarios);
-        setMembresia(todasMembresias.find((item) => item.id === Number(id)) ?? null);
+      if (!sesion) return;
+
+      const [todasSedes, todosUsuarios] = await Promise.all([obtenerSedes(), obtenerUsuarios()]);
+      if (!activo) return;
+      setSedes(todasSedes);
+      setUsuarios(todosUsuarios);
+
+      // Las reglas de Firestore solo dejan al admin listar TODA la coleccion
+      // de membresias; un cliente solo puede leer la suya (get por id), asi
+      // que si entra directo a esta URL solo se le muestra si el id calza
+      // con su propia membresia.
+      if (esAdmin) {
+        const todasMembresias = await obtenerMembresias();
+        if (activo) setMembresia(todasMembresias.find((item) => item.id === Number(id)) ?? null);
+      } else {
+        const propia = await obtenerMembresiaUsuario(sesion.usuario);
+        if (activo) setMembresia(propia && propia.id === Number(id) ? propia : null);
       }
     })();
 
     return () => {
       activo = false;
     };
-  }, [id]);
+  }, [id, esAdmin, sesion]);
 
   if (membresia === undefined) {
     return (

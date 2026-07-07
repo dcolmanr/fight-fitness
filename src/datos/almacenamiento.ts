@@ -1,11 +1,11 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Membresia, PlanMembresia, Sede, SolicitudTraslado, Usuario } from '../tipos/modelos';
 
 const COLECCION_SEDES = 'sedes';
 const COLECCION_USUARIOS = 'usuarios';
 const COLECCION_MEMBRESIAS = 'membresias';
-const CLAVE_TRASLADOS = 'solicitudesTraslado';
+const COLECCION_TRASLADOS = 'solicitudesTraslado';
 
 const sedesIniciales: Sede[] = [
   {
@@ -58,31 +58,12 @@ export const planesMembresia: PlanMembresia[] = [
   },
 ];
 
-function leerJson<T>(clave: string, respaldo: T): T {
-  const valor = localStorage.getItem(clave);
-  if (!valor) return respaldo;
-
-  try {
-    return JSON.parse(valor) as T;
-  } catch {
-    return respaldo;
-  }
-}
-
-function escribirJson<T>(clave: string, valor: T): void {
-  localStorage.setItem(clave, JSON.stringify(valor));
-}
-
 export async function prepararDatosIniciales(): Promise<void> {
   const snapshotSedes = await getDocs(collection(db, COLECCION_SEDES));
   if (snapshotSedes.empty) {
     await Promise.all(
       sedesIniciales.map((sede) => setDoc(doc(db, COLECCION_SEDES, String(sede.id)), sede)),
     );
-  }
-
-  if (!localStorage.getItem(CLAVE_TRASLADOS)) {
-    escribirJson(CLAVE_TRASLADOS, []);
   }
 }
 
@@ -126,12 +107,33 @@ export async function actualizarUsuario(correo: string, datos: Partial<Omit<Usua
   await updateDoc(doc(db, COLECCION_USUARIOS, correo), datos);
 }
 
-export function obtenerTraslados(): SolicitudTraslado[] {
-  return leerJson<SolicitudTraslado[]>(CLAVE_TRASLADOS, []);
+// A diferencia de usuarios/membresias, un cliente puede tener VARIAS
+// solicitudes de traslado a lo largo del tiempo (historial), asi que el id
+// del documento es autogenerado, no el correo.
+export async function obtenerTraslados(): Promise<SolicitudTraslado[]> {
+  const snapshot = await getDocs(collection(db, COLECCION_TRASLADOS));
+  return snapshot.docs.map((documento) => documento.data() as SolicitudTraslado);
 }
 
-export function guardarTraslados(traslados: SolicitudTraslado[]): void {
-  escribirJson(CLAVE_TRASLADOS, traslados);
+// Solo trae las solicitudes del propio cliente. Se usa una consulta con
+// "where" (en vez de traer toda la coleccion y filtrar en el navegador)
+// porque las reglas de Firestore no filtran resultados: si un cliente
+// pidiera la coleccion completa sin este "where", Firestore rechazaria toda
+// la consulta (no le devuelve "lo que sí puede ver", la bloquea entera).
+export async function obtenerTrasladosPropios(correo: string): Promise<SolicitudTraslado[]> {
+  const consulta = query(collection(db, COLECCION_TRASLADOS), where('usuario', '==', correo));
+  const snapshot = await getDocs(consulta);
+  return snapshot.docs.map((documento) => documento.data() as SolicitudTraslado);
+}
+
+export async function crearTraslado(datos: Omit<SolicitudTraslado, 'id'>): Promise<SolicitudTraslado> {
+  const nuevaSolicitud: SolicitudTraslado = { id: Date.now(), ...datos };
+  await setDoc(doc(db, COLECCION_TRASLADOS, String(nuevaSolicitud.id)), nuevaSolicitud);
+  return nuevaSolicitud;
+}
+
+export async function actualizarTraslado(id: number, datos: Partial<Omit<SolicitudTraslado, 'id'>>): Promise<void> {
+  await updateDoc(doc(db, COLECCION_TRASLADOS, String(id)), datos);
 }
 
 // El id del documento es el correo del cliente (una membresia "vigente" por

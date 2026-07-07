@@ -4,41 +4,52 @@ import { usarAutenticacion } from '../contextos/ContextoAutenticacion';
 import {
   nombreSedeEnLista,
   obtenerMembresias,
+  obtenerMembresiaUsuario,
   obtenerSedes,
   obtenerTraslados,
+  obtenerTrasladosPropios,
   obtenerUsuarios,
 } from '../datos/almacenamiento';
-import { Membresia, Sede, Usuario } from '../tipos/modelos';
+import { Sede, SolicitudTraslado, Usuario } from '../tipos/modelos';
 
 export function PaginaPanel() {
   const { sesion, esAdmin } = usarAutenticacion();
   const [sedes, setSedes] = useState<Sede[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [membresias, setMembresias] = useState<Membresia[]>([]);
-  const traslados = obtenerTraslados();
+  const [activas, setActivas] = useState(0);
+  const [traslados, setTraslados] = useState<SolicitudTraslado[]>([]);
   const pendientes = traslados.filter((solicitud) => solicitud.estado === 'Pendiente').length;
-  const activas = membresias.filter((membresia) => membresia.estado === 'Activa').length;
 
   useEffect(() => {
     let activo = true;
 
     (async () => {
-      const [todasSedes, todosUsuarios, todasMembresias] = await Promise.all([
+      if (!sesion) return;
+
+      // Las reglas de Firestore solo dejan al admin listar TODA la coleccion
+      // de membresias; un cliente solo puede leer la suya (get por id). Por
+      // eso la consulta se arma distinto segun el rol, en vez de traer todo
+      // y filtrar despues en el navegador.
+      const [todasSedes, todosUsuarios, totalActivas, todosTraslados] = await Promise.all([
         obtenerSedes(),
         obtenerUsuarios(),
-        obtenerMembresias(),
+        esAdmin
+          ? obtenerMembresias().then((lista) => lista.filter((m) => m.estado === 'Activa').length)
+          : obtenerMembresiaUsuario(sesion.usuario).then((propia) => (propia?.estado === 'Activa' ? 1 : 0)),
+        esAdmin ? obtenerTraslados() : obtenerTrasladosPropios(sesion.usuario),
       ]);
       if (activo) {
         setSedes(todasSedes);
         setUsuarios(todosUsuarios);
-        setMembresias(todasMembresias);
+        setActivas(totalActivas);
+        setTraslados(todosTraslados);
       }
     })();
 
     return () => {
       activo = false;
     };
-  }, []);
+  }, [esAdmin, sesion]);
 
   return (
     <section className="pagina">
